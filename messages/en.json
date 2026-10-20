@@ -8,7 +8,8 @@
     "home": "Home",
     "tonight": "Tonight",
     "dashboard": "Dashboard",
-    "signIn": "Sign in"
+    "signIn": "Sign in",
+    "toggleTheme": "Switch light or dark mode"
   },
   "Home": {
     "title": "Nordkompass",
@@ -17,7 +18,22 @@
   },
   "Tonight": {
     "title": "Tonight in {place}",
-    "placeholder": "Aurora chance, cloud cover and weather will appear here."
+    "subtitle": "Sky and weather for this evening and night, in Norwegian time.",
+    "bestLabel": "Clearest sky tonight",
+    "bestValue": "{time} · {cloud}% cloud",
+    "noHours": "No evening hours in the forecast right now. Check back later today.",
+    "error": "We couldn't load the weather forecast right now. Please try again in a few minutes.",
+    "colTime": "Time",
+    "colSky": "Sky",
+    "colCloud": "Cloud",
+    "colTemp": "Temp",
+    "colWind": "Wind",
+    "level": {
+      "clear": "Clear",
+      "partly": "Partly cloudy",
+      "cloudy": "Cloudy"
+    },
+    "credit": "Weather data from MET Norway."
   },
   "Dashboard": {
     "title": "Dashboard",

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import { getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "./language-switcher";
+import { ThemeToggle } from "./theme-toggle";
 
 export async function SiteHeader() {
   const t = await getTranslations("Nav");
@@ -23,6 +24,7 @@ export async function SiteHeader() {
           <Suspense fallback={<div className="h-7 w-16" />}>
             <LanguageSwitcher />
           </Suspense>
+          <ThemeToggle/>
           <Link
             href="/sign-in"
             className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground hover:opacity-90"

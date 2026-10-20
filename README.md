@@ -8,6 +8,8 @@
 - npm install prisma @prisma/client
 - npm instal zod
 - npx shadcn@latest init
+- npm install next-themes
+- npm install lucide-react
 
 ### prisma
 - npm install prisma tsx --save-dev

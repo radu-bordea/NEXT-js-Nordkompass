@@ -8,7 +8,8 @@
     "home": "Hjem",
     "tonight": "I kveld",
     "dashboard": "Dashbord",
-    "signIn": "Logg inn"
+    "signIn": "Logg inn",
+    "toggleTheme": "Bytt mellom lyst og mørkt tema"
   },
   "Home": {
     "title": "Nordkompass",
@@ -17,7 +18,22 @@
   },
   "Tonight": {
     "title": "I kveld i {place}",
-    "placeholder": "Nordlyssjanse, skydekke og vær vises her."
+    "subtitle": "Himmel og vær i kveld og i natt, i norsk tid.",
+    "bestLabel": "Klarest himmel i kveld",
+    "bestValue": "{time} · {cloud} % skydekke",
+    "noHours": "Ingen kveldstimer i prognosen akkurat nå. Sjekk igjen senere i dag.",
+    "error": "Vi kunne ikke hente værprognosen akkurat nå. Prøv igjen om noen minutter.",
+    "colTime": "Tid",
+    "colSky": "Himmel",
+    "colCloud": "Skydekke",
+    "colTemp": "Temp",
+    "colWind": "Vind",
+    "level": {
+      "clear": "Klart",
+      "partly": "Delvis skyet",
+      "cloudy": "Skyet"
+    },
+    "credit": "Værdata fra Meteorologisk institutt."
   },
   "Dashboard": {
     "title": "Dashbord",

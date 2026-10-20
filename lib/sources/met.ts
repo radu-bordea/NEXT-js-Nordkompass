@@ -44,7 +44,7 @@ export async function fetchMetForecast(lat: number, lon: number): Promise<MetHou
 
   const res = await fetch(url, {
     headers: { "User-Agent": userAgent },
-    cache: "no-store",
+    next: { revalidate: 1800 }, // reuse the answer for 30 minutes
   });
 
   if (!res.ok) {
