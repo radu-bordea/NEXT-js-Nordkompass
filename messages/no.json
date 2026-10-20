@@ -14,7 +14,8 @@
   "Home": {
     "title": "Nordkompass",
     "intro": "Nordlyssjanser, vær og forhold i Bodø og Nordland i kveld.",
-    "cta": "Se kvelden i Bodø"
+    "cta": "Se kvelden i Bodø",
+    "pickPlace": "Velg et sted"
   },
   "Tonight": {
     "title": "I kveld i {place}",
@@ -26,6 +27,7 @@
     "colTime": "Tid",
     "colSky": "Himmel",
     "colCloud": "Skydekke",
+    "colPrecip": "Nedbør",
     "colTemp": "Temp",
     "colWind": "Vind",
     "level": {
@@ -33,7 +35,8 @@
       "partly": "Delvis skyet",
       "cloudy": "Skyet"
     },
-    "credit": "Værdata fra Meteorologisk institutt."
+    "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
+    "licence": "Lisens"
   },
   "Dashboard": {
     "title": "Dashbord",

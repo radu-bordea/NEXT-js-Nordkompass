@@ -14,7 +14,8 @@
   "Home": {
     "title": "Nordkompass",
     "intro": "Tonight's aurora chances, weather and conditions across Bodø and Nordland.",
-    "cta": "See tonight in Bodø"
+    "cta": "See tonight in Bodø",
+    "pickPlace": "Choose a place"
   },
   "Tonight": {
     "title": "Tonight in {place}",
@@ -26,6 +27,7 @@
     "colTime": "Time",
     "colSky": "Sky",
     "colCloud": "Cloud",
+    "colPrecip": "Rain/snow",
     "colTemp": "Temp",
     "colWind": "Wind",
     "level": {
@@ -33,7 +35,8 @@
       "partly": "Partly cloudy",
       "cloudy": "Cloudy"
     },
-    "credit": "Weather data from MET Norway."
+    "credit": "Weather data from MET Norway (CC BY 4.0).",
+    "licence": "Licence"
   },
   "Dashboard": {
     "title": "Dashboard",

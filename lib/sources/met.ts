@@ -10,6 +10,16 @@ const Details = z.object({
   wind_speed: z.number().optional(),
 });
 
+const NextHour = z.object({
+  summary: z.object({ symbol_code: z.string() }).optional(),
+  details: z
+    .object({
+      precipitation_amount: z.number().optional(),
+      probability_of_precipitation: z.number().optional(),
+    })
+    .optional(),
+});
+
 const MetResponse = z.object({
   properties: z.object({
     timeseries: z.array(
@@ -17,6 +27,7 @@ const MetResponse = z.object({
         time: z.string(),
         data: z.object({
           instant: z.object({ details: Details }),
+          next_1_hours: NextHour.optional(),
         }),
       }),
     ),
@@ -31,9 +42,15 @@ export type MetHour = {
   cloudHigh: number | null;
   temperature: number | null;
   windSpeed: number | null;
+  precipitation: number | null; // mm in the next hour
+  precipitationChance: number | null; // %
+  symbol: string | null; // MET icon name
 };
 
-export async function fetchMetForecast(lat: number, lon: number): Promise<MetHour[]> {
+export async function fetchMetForecast(
+  lat: number,
+  lon: number,
+): Promise<MetHour[]> {
   const userAgent = process.env.MET_USER_AGENT;
   if (!userAgent) {
     throw new Error("MET_USER_AGENT is missing in .env");
@@ -55,14 +72,18 @@ export async function fetchMetForecast(lat: number, lon: number): Promise<MetHou
 
   return json.properties.timeseries.map((t) => {
     const d = t.data.instant.details;
+    const next = t.data.next_1_hours;
     return {
-      time: new Date(t.time), // UTC
+      time: new Date(t.time),
       cloudTotal: d.cloud_area_fraction ?? null,
       cloudLow: d.cloud_area_fraction_low ?? null,
       cloudMedium: d.cloud_area_fraction_medium ?? null,
       cloudHigh: d.cloud_area_fraction_high ?? null,
       temperature: d.air_temperature ?? null,
       windSpeed: d.wind_speed ?? null,
+      precipitation: next?.details?.precipitation_amount ?? null,
+      precipitationChance: next?.details?.probability_of_precipitation ?? null,
+      symbol: next?.summary?.symbol_code ?? null,
     };
   });
 }
