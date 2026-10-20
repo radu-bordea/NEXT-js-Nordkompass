@@ -1,0 +1,26 @@
+{
+  "Metadata": {
+    "title": "Nordkompass – Nordlys og forhold i Nordland",
+    "description": "Nordkompass viser nordlyssjanser, vær og forhold i Bodø og Nordland i kveld. Gratis for besøkende, med varsler og dashbord for turoperatører og hoteller.",
+    "tagline": "Ditt kompass til nordhimmelen"
+  },
+  "Nav": {
+    "home": "Hjem",
+    "tonight": "I kveld",
+    "dashboard": "Dashbord",
+    "signIn": "Logg inn"
+  },
+  "Home": {
+    "title": "Nordkompass",
+    "intro": "Nordlyssjanser, vær og forhold i Bodø og Nordland i kveld.",
+    "cta": "Se kvelden i Bodø"
+  },
+  "Tonight": {
+    "title": "I kveld i {place}",
+    "placeholder": "Nordlyssjanse, skydekke og vær vises her."
+  },
+  "Dashboard": {
+    "title": "Dashbord",
+    "placeholder": "Dine steder og varsler vises her."
+  }
+}

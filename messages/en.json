@@ -1,0 +1,26 @@
+{
+  "Metadata": {
+    "title": "Nordkompass – Aurora and conditions in Nordland",
+    "description": "Nordkompass shows tonight's aurora chances, weather and conditions across Bodø and Nordland. Free for visitors, with alerts and dashboards for tour operators and hotels.",
+    "tagline": "Your compass to the northern sky"
+  },
+  "Nav": {
+    "home": "Home",
+    "tonight": "Tonight",
+    "dashboard": "Dashboard",
+    "signIn": "Sign in"
+  },
+  "Home": {
+    "title": "Nordkompass",
+    "intro": "Tonight's aurora chances, weather and conditions across Bodø and Nordland.",
+    "cta": "See tonight in Bodø"
+  },
+  "Tonight": {
+    "title": "Tonight in {place}",
+    "placeholder": "Aurora chance, cloud cover and weather will appear here."
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "placeholder": "Your locations and alerts will appear here."
+  }
+}
