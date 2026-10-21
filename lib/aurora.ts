@@ -20,6 +20,8 @@ export type ActivityLevel = "quiet" | "moderate" | "active" | "storm";
 export type NightSummary = {
   level: AuroraLevel;
   bestTime: Date | null;
+  goodFrom: Date | null; // start of the good window
+  goodUntil: Date | null; // end of the good window
   symbol: string | null;
   maxKp: number | null;
   minCloud: number | null;
@@ -147,6 +149,8 @@ export function summarizeNight(
   }));
   const pick = pickBest(rows, (r) => r.a.score);
 
+  const good = pick.best ? rows.filter((r) => r.a.score >= pick.max * 0.9) : [];
+
   const kps = rows.map((r) => r.a.kp).filter(present);
   const clouds = hours.map((h) => h.cloudTotal).filter(present);
   const temps = hours.map((h) => h.temperature).filter(present);
@@ -157,6 +161,8 @@ export function summarizeNight(
   return {
     level: pick.best ? levelFromScore(pick.max) : "none",
     bestTime: pick.best?.h.time ?? null,
+    goodFrom: good[0]?.h.time ?? null,
+    goodUntil: good[good.length - 1]?.h.time ?? null,
     symbol: pick.best?.h.symbol ?? hours[0]?.symbol ?? null,
     maxKp: kps.length ? Math.max(...kps) : null,
     minCloud: clouds.length ? Math.min(...clouds) : null,
@@ -172,7 +178,12 @@ export function summarizeNight(
 export function spotTonight(
   hours: MetHour[],
   kpPoints: KpPoint[],
-  spot: { lat: number; lon: number; darkness: 1 | 2 | 3 | 4 | 5; viewNorth: boolean },
+  spot: {
+    lat: number;
+    lon: number;
+    darkness: 1 | 2 | 3 | 4 | 5;
+    viewNorth: boolean;
+  },
 ): SpotTonight {
   const scored = hours.map((h) => ({
     h,
@@ -185,12 +196,14 @@ export function spotTonight(
   // The hour we're in right now (MET hours start on the hour)
   const now = Date.now();
   const current = scored.find(
-    (s) => now >= s.h.time.getTime() && now < s.h.time.getTime() + 60 * 60 * 1000,
+    (s) =>
+      now >= s.h.time.getTime() && now < s.h.time.getTime() + 60 * 60 * 1000,
   );
   const nowLevel = current ? levelFromScore(current.score) : null;
 
   const pick = pickBest(scored, (s) => s.score);
-  if (!pick.best) return { score: 0, level: "none", bestTime: null, cloud: null, nowLevel };
+  if (!pick.best)
+    return { score: 0, level: "none", bestTime: null, cloud: null, nowLevel };
 
   return {
     score: pick.max,

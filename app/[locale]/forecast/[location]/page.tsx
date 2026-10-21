@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
 import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
 import { activityLevel, summarizeNight, type AuroraLevel } from "@/lib/aurora";
-import { groupNights, TIME_ZONE } from "@/lib/weather";
+import { groupNights, osloHour, TIME_ZONE } from "@/lib/weather";
 import { locations, getLocation } from "@/lib/locations";
 import { LocationPicker } from "@/components/location-picker";
 import { WeatherIcon } from "@/components/weather-icon";
@@ -142,6 +142,20 @@ export default async function ForecastPage({
                       {tTonight("auroraBest", {
                         time: timeFmt.format(summary.bestTime),
                       })}
+                      {osloHour(summary.bestTime) < 12 &&
+                        ` ${t("earlyMorning")}`}
+                      {summary.goodFrom &&
+                        summary.goodUntil &&
+                        summary.goodFrom.getTime() !==
+                          summary.goodUntil.getTime() && (
+                          <>
+                            {" · "}
+                            {tTonight("auroraWindow", {
+                              from: timeFmt.format(summary.goodFrom),
+                              to: timeFmt.format(summary.goodUntil),
+                            })}
+                          </>
+                        )}
                     </p>
                   )}
                 </div>

@@ -73,6 +73,7 @@
     "title": "Next 3 nights in {place}",
     "subtitle": "Aurora chance and weather for the coming nights, 18:00–06:00 Norwegian time.",
     "tonight": "Tonight",
+    "earlyMorning": "(early morning)",
     "tomorrow": "Tomorrow night",
     "nightOf": "{day} night",
     "unlikely": "Unlikely",

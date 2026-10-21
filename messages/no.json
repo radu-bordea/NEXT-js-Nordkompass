@@ -73,6 +73,7 @@
     "title": "De neste 3 nettene i {place}",
     "subtitle": "Nordlyssjanse og vær for de kommende nettene, kl. 18–06 norsk tid.",
     "tonight": "I kveld",
+    "earlyMorning": "(tidlig morgen)",
     "tomorrow": "I morgen kveld",
     "nightOf": "{day} kveld",
     "unlikely": "Lite sannsynlig",
