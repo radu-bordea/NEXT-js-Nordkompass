@@ -17,10 +17,22 @@ export async function SiteHeader() {
 
         {/* Links: own row on phones, inline from tablet up */}
         <nav className="order-last flex w-full items-center gap-5 text-sm sm:order-none sm:w-auto sm:flex-1">
-          <Link href="/tonight/bodo" className="text-muted-foreground hover:text-foreground">
+          <Link
+            href="/tonight/bodo"
+            className="text-muted-foreground hover:text-foreground"
+          >
             {t("tonight")}
           </Link>
-          <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
+          <Link
+            href="/forecast/bodo"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            {t("forecast")}
+          </Link>
+          <Link
+            href="/dashboard"
+            className="text-muted-foreground hover:text-foreground"
+          >
             {t("dashboard")}
           </Link>
         </nav>

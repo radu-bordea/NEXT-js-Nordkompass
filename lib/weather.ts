@@ -34,3 +34,40 @@ export function skyLevel(cloud: number | null): SkyLevel {
   if (cloud < 70) return "partly";
   return "cloudy";
 }
+
+// Date in Norwegian time as "YYYY-MM-DD"
+export function osloDateKey(date: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
+}
+
+function isNightHour(date: Date): boolean {
+  const hour = osloHour(date);
+  return hour >= 18 || hour <= 6;
+}
+
+// Group forecast hours into nights (18:00–06:00 Norwegian time)
+export function groupNights(hours: MetHour[], count = 3): { key: string; hours: MetHour[] }[] {
+  const now = Date.now();
+  const nights = new Map<string, MetHour[]>();
+
+  for (const h of hours) {
+    if (h.time.getTime() < now - 60 * 60 * 1000) continue; // skip the past
+    if (!isNightHour(h.time)) continue;
+
+    // Minus 12 hours: 18:00–23:00 stays on the same date, 00:00–06:00 moves to the evening before
+    const key = osloDateKey(new Date(h.time.getTime() - 12 * 60 * 60 * 1000));
+    const list = nights.get(key) ?? [];
+    list.push(h);
+    nights.set(key, list);
+  }
+
+  return [...nights.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(0, count)
+    .map(([key, hours]) => ({ key, hours }));
+}

@@ -9,7 +9,8 @@
     "tonight": "Tonight",
     "dashboard": "Dashboard",
     "signIn": "Sign in",
-    "toggleTheme": "Switch light or dark mode"
+    "toggleTheme": "Switch light or dark mode",
+    "forecast": "Forecast"
   },
   "Home": {
     "title": "Nordkompass",
@@ -56,8 +57,30 @@
       "daylight": "Too bright"
     },
     "creditNoaa": "Aurora activity from NOAA SWPC.",
+    "nextNights": "Next 3 nights",
     "credit": "Weather data from MET Norway (CC BY 4.0).",
     "licence": "Licence"
+  },
+  "Forecast": {
+    "title": "Next 3 nights in {place}",
+    "subtitle": "Aurora chance and weather for the coming nights, 18:00–06:00 Norwegian time.",
+    "tonight": "Tonight",
+    "tomorrow": "Tomorrow night",
+    "nightOf": "{day} night",
+    "unlikely": "Unlikely",
+    "activity": "Activity",
+    "clearest": "Clearest sky",
+    "lowestTemp": "Lowest temp",
+    "maxWind": "Strongest wind",
+    "precip": "Rain/snow",
+    "hourByHour": "See hour by hour",
+    "noData": "No forecast available right now. Please try again later.",
+    "confidence": {
+      "high": "High confidence",
+      "medium": "Medium confidence",
+      "low": "Low confidence"
+    },
+    "note": "Forecasts get less certain further ahead, especially cloud cover and aurora activity. Check again on the day."
   },
   "Dashboard": {
     "title": "Dashboard",

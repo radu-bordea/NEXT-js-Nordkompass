@@ -78,3 +78,47 @@ export function activityLevel(kp: number): ActivityLevel {
   if (kp >= 2) return "moderate";
   return "quiet";
 }
+
+export type NightSummary = {
+  level: AuroraLevel;
+  bestTime: Date | null;
+  symbol: string | null;
+  maxKp: number | null;
+  minCloud: number | null;
+  minTemp: number | null;
+  maxWind: number | null;
+  precip: number | null;
+};
+
+const present = (v: number | null): v is number => v !== null;
+
+export function summarizeNight(
+  hours: MetHour[],
+  kpPoints: KpPoint[],
+  lat: number,
+  lon: number,
+): NightSummary {
+  const rows = hours.map((h) => ({ h, a: auroraForHour(h, kpPoints, lat, lon) }));
+
+  const best = rows.reduce<(typeof rows)[number] | null>(
+    (b, r) => (r.a.score > (b?.a.score ?? 0) ? r : b),
+    null,
+  );
+
+  const kps = rows.map((r) => r.a.kp).filter(present);
+  const clouds = hours.map((h) => h.cloudTotal).filter(present);
+  const temps = hours.map((h) => h.temperature).filter(present);
+  const winds = hours.map((h) => h.windSpeed).filter(present);
+  const precips = hours.map((h) => h.precipitation).filter(present);
+
+  return {
+    level: best?.a.level ?? "none",
+    bestTime: best?.h.time ?? null,
+    symbol: best?.h.symbol ?? hours[0]?.symbol ?? null,
+    maxKp: kps.length ? Math.max(...kps) : null,
+    minCloud: clouds.length ? Math.min(...clouds) : null,
+    minTemp: temps.length ? Math.min(...temps) : null,
+    maxWind: winds.length ? Math.max(...winds) : null,
+    precip: precips.length ? precips.reduce((sum, p) => sum + p, 0) : null,
+  };
+}

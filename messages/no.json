@@ -9,7 +9,8 @@
     "tonight": "I kveld",
     "dashboard": "Dashbord",
     "signIn": "Logg inn",
-    "toggleTheme": "Bytt mellom lyst og mørkt tema"
+    "toggleTheme": "Bytt mellom lyst og mørkt tema",
+    "forecast": "Prognose"
   },
   "Home": {
     "title": "Nordkompass",
@@ -56,8 +57,30 @@
       "daylight": "For lyst"
     },
     "creditNoaa": "Nordlysaktivitet fra NOAA SWPC.",
+    "nextNights": "De neste 3 nettene",
     "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
     "licence": "Lisens"
+  },
+  "Forecast": {
+    "title": "De neste 3 nettene i {place}",
+    "subtitle": "Nordlyssjanse og vær for de kommende nettene, kl. 18–06 norsk tid.",
+    "tonight": "I kveld",
+    "tomorrow": "I morgen kveld",
+    "nightOf": "{day} kveld",
+    "unlikely": "Lite sannsynlig",
+    "activity": "Aktivitet",
+    "clearest": "Klarest himmel",
+    "lowestTemp": "Laveste temp",
+    "maxWind": "Sterkeste vind",
+    "precip": "Nedbør",
+    "hourByHour": "Se time for time",
+    "noData": "Ingen prognose tilgjengelig akkurat nå. Prøv igjen senere.",
+    "confidence": {
+      "high": "Høy sikkerhet",
+      "medium": "Middels sikkerhet",
+      "low": "Lav sikkerhet"
+    },
+    "note": "Prognosene blir mer usikre jo lenger frem i tid, særlig skydekke og nordlysaktivitet. Sjekk igjen samme dag."
   },
   "Dashboard": {
     "title": "Dashbord",
