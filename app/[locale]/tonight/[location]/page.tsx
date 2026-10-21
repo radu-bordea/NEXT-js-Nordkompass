@@ -1,13 +1,10 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { Cloud, Droplets, Thermometer, Wind } from "lucide-react";
+import { Cloud, Droplets, Sparkles, Thermometer, Wind } from "lucide-react";
 import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
-import {
-  getTonightHours,
-  skyLevel,
-  TIME_ZONE,
-  type SkyLevel,
-} from "@/lib/weather";
+import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
+import { activityLevel, auroraForHour, type AuroraLevel } from "@/lib/aurora";
+import { getTonightHours, skyLevel, TIME_ZONE, type SkyLevel } from "@/lib/weather";
 import { locations, getLocation } from "@/lib/locations";
 import { LocationPicker } from "@/components/location-picker";
 import { WeatherIcon } from "@/components/weather-icon";
@@ -16,10 +13,18 @@ export function generateStaticParams() {
   return Object.keys(locations).map((location) => ({ location }));
 }
 
-const levelStyles: Record<SkyLevel, string> = {
+const skyStyles: Record<SkyLevel, string> = {
   clear: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   partly: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   cloudy: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+};
+
+const auroraStyles: Record<AuroraLevel, string> = {
+  high: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+  possible: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
+  low: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
+  none: "bg-slate-500/10 text-muted-foreground",
+  daylight: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
 export default async function TonightPage({
@@ -34,25 +39,39 @@ export default async function TonightPage({
   const t = await getTranslations("Tonight");
   const locale = await getLocale();
 
-  let hours: MetHour[] = [];
-  let failed = false;
-  try {
-    hours = await fetchMetForecast(place.lat, place.lon);
-  } catch {
-    failed = true;
-  }
+  // Fetch weather and aurora data at the same time
+  const [metResult, kpResult] = await Promise.allSettled([
+    fetchMetForecast(place.lat, place.lon),
+    fetchKpForecast(),
+  ]);
 
-  const tonight = getTonightHours(hours);
+  const hours: MetHour[] = metResult.status === "fulfilled" ? metResult.value : [];
+  const failed = metResult.status === "rejected";
+  const kpPoints: KpPoint[] = kpResult.status === "fulfilled" ? kpResult.value : [];
+  const kpFailed = kpResult.status === "rejected";
+
+  const rows = getTonightHours(hours).map((h) => ({
+    h,
+    aurora: auroraForHour(h, kpPoints, place.lat, place.lon),
+  }));
+
   const timeFmt = new Intl.DateTimeFormat(locale === "no" ? "nb-NO" : "en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: TIME_ZONE,
   });
 
-  const best = tonight
-    .filter((h) => h.cloudTotal !== null)
+  // Best aurora hour (highest score)
+  const bestAurora = rows.reduce<(typeof rows)[number] | null>(
+    (best, r) => (r.aurora.score > (best?.aurora.score ?? 0) ? r : best),
+    null,
+  );
+
+  // Clearest hour (lowest cloud cover)
+  const bestSky = rows
+    .filter((r) => r.h.cloudTotal !== null)
     .reduce<MetHour | null>(
-      (min, h) => (min === null || h.cloudTotal! < min.cloudTotal! ? h : min),
+      (min, r) => (min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min),
       null,
     );
 
@@ -67,38 +86,67 @@ export default async function TonightPage({
       </div>
 
       {failed && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
-          {t("error")}
-        </div>
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("error")}</div>
       )}
 
-      {!failed && best && (
-        <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
-          <WeatherIcon symbol={best.symbol} className="h-10 w-10 shrink-0" />
-          <div>
-            <p className="text-sm text-muted-foreground">{t("bestLabel")}</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums">
-              {t("bestValue", {
-                time: timeFmt.format(best.time),
-                cloud: Math.round(best.cloudTotal!),
-              })}
-            </p>
+      {!failed && rows.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          {/* Aurora tonight */}
+          <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
+            <Sparkles className="h-10 w-10 shrink-0 text-emerald-500" aria-hidden="true" />
+            <div>
+              <p className="text-sm text-muted-foreground">{t("auroraLabel")}</p>
+              {bestAurora && bestAurora.aurora.level !== "none" ? (
+                <>
+                  <p className="mt-1 text-2xl font-semibold">
+                    {t(`aurora.${bestAurora.aurora.level}`)}
+                  </p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {t("auroraBest", { time: timeFmt.format(bestAurora.h.time) })}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-1 text-2xl font-semibold">{t("auroraNone")}</p>
+              )}
+            </div>
           </div>
+
+          {/* Clearest sky */}
+          {bestSky && (
+            <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
+              <WeatherIcon symbol={bestSky.symbol} className="h-10 w-10 shrink-0" />
+              <div>
+                <p className="text-sm text-muted-foreground">{t("bestLabel")}</p>
+                <p className="mt-1 text-2xl font-semibold tabular-nums">
+                  {t("bestValue", {
+                    time: timeFmt.format(bestSky.time),
+                    cloud: Math.round(bestSky.cloudTotal!),
+                  })}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {!failed && tonight.length === 0 && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
-          {t("noHours")}
-        </div>
+      {!failed && kpFailed && (
+        <p className="text-sm text-muted-foreground">{t("kpMissing")}</p>
       )}
 
-      {!failed && tonight.length > 0 && (
+      {!failed && rows.length === 0 && (
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("noHours")}</div>
+      )}
+
+      {!failed && rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b text-left text-muted-foreground">
-                <th className="px-4 py-3 font-medium">{t("colTime")}</th>
+                <th className="sticky left-0 z-10 border-r bg-card px-4 py-3 font-medium">
+                  {t("colTime")}
+                </th>
+                <th className="px-4 py-3 font-medium">{t("colAurora")}</th>
+                <th className="px-4 py-3 font-medium">{t("colActivity")}</th>
                 <th className="px-4 py-3 font-medium">{t("colSky")}</th>
                 <th className="px-4 py-3 text-right font-medium">
                   <span className="inline-flex items-center gap-1.5">
@@ -127,24 +175,50 @@ export default async function TonightPage({
               </tr>
             </thead>
             <tbody>
-              {tonight.map((h) => {
-                const level = skyLevel(h.cloudTotal);
-                const isBest = best !== null && h.time.getTime() === best.time.getTime();
+              {rows.map(({ h, aurora }) => {
+                const sky = skyLevel(h.cloudTotal);
+                const isBest =
+                  bestAurora !== null &&
+                  bestAurora.aurora.level !== "none" &&
+                  h.time.getTime() === bestAurora.h.time.getTime();
                 return (
                   <tr
                     key={h.time.toISOString()}
                     className={`border-b last:border-0 ${isBest ? "bg-primary/10" : ""}`}
                   >
-                    <td className="px-4 py-3 font-medium tabular-nums">
+                    <td
+                      className={`sticky left-0 z-10 border-r bg-card px-4 py-3 font-medium tabular-nums ${
+                        isBest ? "shadow-[inset_0_0_0_100vmax] shadow-primary/10" : ""
+                      }`}
+                    >
                       {timeFmt.format(h.time)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[aurora.level]}`}
+                      >
+                        {t(`aurora.${aurora.level}`)}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3">
+                      {aurora.kp === null ? (
+                        "–"
+                      ) : (
+                        <>
+                          {t(`activity.${activityLevel(aurora.kp)}`)}{" "}
+                          <span className="text-xs text-muted-foreground tabular-nums">
+                            (Kp {aurora.kp.toFixed(1)})
+                          </span>
+                        </>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
                         <WeatherIcon symbol={h.symbol} className="h-6 w-6 shrink-0" />
                         <span
-                          className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${levelStyles[level]}`}
+                          className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${skyStyles[sky]}`}
                         >
-                          {t(`level.${level}`)}
+                          {t(`level.${sky}`)}
                         </span>
                       </div>
                     </td>
@@ -168,7 +242,11 @@ export default async function TonightPage({
         </div>
       )}
 
-            <p className="text-xs text-muted-foreground">
+      {!failed && rows.length > 0 && (
+        <p className="max-w-prose text-sm text-muted-foreground">{t("kpExplain")}</p>
+      )}
+
+      <p className="text-xs text-muted-foreground">
         <a
           href="https://www.met.no/en"
           target="_blank"
@@ -184,6 +262,14 @@ export default async function TonightPage({
           className="underline hover:text-foreground"
         >
           {t("licence")}
+        </a>{" "}
+        <a
+          href="https://www.swpc.noaa.gov/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
+          {t("creditNoaa")}
         </a>
       </p>
     </section>

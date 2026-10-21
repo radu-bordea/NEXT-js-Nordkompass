@@ -35,6 +35,27 @@
       "partly": "Partly cloudy",
       "cloudy": "Cloudy"
     },
+    "auroraLabel": "Aurora tonight",
+    "auroraBest": "Best around {time}",
+    "auroraNone": "Unlikely tonight",
+    "kpMissing": "Aurora activity data is unavailable right now, so the aurora chance only uses clouds and darkness.",
+    "colAurora": "Aurora",
+    "colActivity": "Activity",
+    "activity": {
+      "quiet": "Quiet",
+      "moderate": "Moderate",
+      "active": "Active",
+      "storm": "Storm"
+    },
+    "kpExplain": "Activity shows how strong the northern lights are, based on the Kp index (0–9). In Bodø, the aurora is often visible even when activity is quiet or moderate. A clear, dark sky matters most.",
+    "aurora": {
+      "high": "High",
+      "possible": "Possible",
+      "low": "Low",
+      "none": "Very low",
+      "daylight": "Too bright"
+    },
+    "creditNoaa": "Aurora activity from NOAA SWPC.",
     "credit": "Weather data from MET Norway (CC BY 4.0).",
     "licence": "Licence"
   },

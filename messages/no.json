@@ -35,6 +35,27 @@
       "partly": "Delvis skyet",
       "cloudy": "Skyet"
     },
+    "auroraLabel": "Nordlys i kveld",
+    "auroraBest": "Best rundt {time}",
+    "auroraNone": "Lite sannsynlig i kveld",
+    "kpMissing": "Nordlysaktivitet er ikke tilgjengelig akkurat nå, så sjansen bygger bare på skydekke og mørke.",
+    "colAurora": "Nordlys",
+    "colActivity": "Aktivitet",
+    "activity": {
+      "quiet": "Rolig",
+      "moderate": "Moderat",
+      "active": "Aktiv",
+      "storm": "Storm"
+    },
+    "kpExplain": "Aktivitet viser hvor sterkt nordlyset er, basert på Kp-indeksen (0–9). I Bodø er nordlyset ofte synlig selv når aktiviteten er rolig eller moderat. Klar og mørk himmel betyr mest.",
+    "aurora": {
+      "high": "Høy",
+      "possible": "Mulig",
+      "low": "Lav",
+      "none": "Svært lav",
+      "daylight": "For lyst"
+    },
+    "creditNoaa": "Nordlysaktivitet fra NOAA SWPC.",
     "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
     "licence": "Lisens"
   },

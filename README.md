@@ -10,6 +10,8 @@
 - npx shadcn@latest init
 - npm install next-themes
 - npm install lucide-react
+- npm install suncalc
+- npm install -D @types/suncalc
 
 ### prisma
 - npm install prisma tsx --save-dev
