@@ -41,11 +41,21 @@
   --radius: 1rem;
   --shadow-2xs: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.05);
   --shadow-xs: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.05);
-  --shadow-sm: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1), 0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
-  --shadow: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1), 0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
-  --shadow-md: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1), 0px 2px 4px -3px hsl(0 0% 10.1961% / 0.1);
-  --shadow-lg: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1), 0px 4px 6px -3px hsl(0 0% 10.1961% / 0.1);
-  --shadow-xl: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1), 0px 8px 10px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-sm:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 1px 2px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-md:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 2px 4px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-lg:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 4px 6px -3px hsl(0 0% 10.1961% / 0.1);
+  --shadow-xl:
+    0px 4px 8px -2px hsl(0 0% 10.1961% / 0.1),
+    0px 8px 10px -3px hsl(0 0% 10.1961% / 0.1);
   --shadow-2xl: 0px 4px 8px -2px hsl(0 0% 10.1961% / 0.25);
 }
 
@@ -151,5 +161,84 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Three green waves spreading out from map spots with a high chance right now */
+.nk-wave {
+  position: absolute;
+  inset: -2px;
+  border-radius: 9999px;
+  border: 2px solid rgb(16 185 129 / 0.9);
+  background: rgb(16 185 129 / 0.15);
+  animation: nk-wave 4s ease-out infinite;
+  pointer-events: none;
+  z-index: -1;
+}
+.nk-wave--2 {
+  animation-delay: 1.33s;
+}
+.nk-wave--3 {
+  animation-delay: 2.67s;
+}
+@keyframes nk-wave {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Slowly drifting aurora colours behind a card */
+.aurora-glow {
+  position: relative;
+  overflow: hidden;
+}
+.aurora-glow::before {
+  content: "";
+  position: absolute;
+  inset: -40%;
+  background:
+    radial-gradient(circle at 30% 50%, rgb(16 185 129 / 0.18), transparent 60%),
+    radial-gradient(circle at 70% 40%, rgb(139 92 246 / 0.14), transparent 60%);
+  animation: aurora-drift 8s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+@keyframes aurora-drift {
+  from {
+    transform: translateX(-10%) rotate(-3deg);
+  }
+  to {
+    transform: translateX(10%) rotate(3deg);
+  }
+}
+
+/* Cards fade and slide in, one after another */
+.fade-up {
+  animation: fade-up 0.9s ease-out both;
+}
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Turn animations off for people who prefer less motion */
+@media (prefers-reduced-motion: reduce) {
+  .nk-wave,
+  .aurora-glow::before,
+  .fade-up {
+    animation: none;
+  }
+  .nk-wave {
+    display: none;
   }
 }

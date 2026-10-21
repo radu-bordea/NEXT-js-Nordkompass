@@ -55,6 +55,7 @@
     "spotBest": "Best {time}",
     "spotCloud": "{cloud}% cloud",
     "spotDarkness": "Darkness {value}/5",
+    "spotNow": "Good right now",
     "kpExplain": "Activity shows how strong the northern lights are, based on the Kp index (0–9). In Bodø, the aurora is often visible even when activity is quiet or moderate. A clear, dark sky matters most.",
     "aurora": {
       "high": "High",

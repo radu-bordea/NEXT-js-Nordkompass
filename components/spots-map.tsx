@@ -15,6 +15,7 @@ export type MapSpot = {
   levelLabel: string; // e.g. "High"
   detail: string; // e.g. "Best 22:00 · 5% cloud · Darkness 4/5"
   note: string;
+  pulse: boolean; // true when the chance is High right now
 };
 
 const MAP_STYLES = {
@@ -97,8 +98,18 @@ export function SpotsMap({ spots }: { spots: MapSpot[] }) {
         const dot = document.createElement("button");
         dot.type = "button";
         dot.textContent = String(rank);
+        dot.className = "nk-dot";
         dot.setAttribute("aria-label", `${rank}. ${s.name}`);
         dot.style.cssText = `width:28px;height:28px;border-radius:9999px;background:${LEVEL_COLORS[s.level]};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.25);cursor:pointer;color:#fff;font:600 13px/1 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;`;
+
+        // Three expanding waves when the chance is High right now
+        if (s.pulse) {
+          for (const n of [1, 2, 3]) {
+            const wave = document.createElement("span");
+            wave.className = `nk-wave nk-wave--${n}`;
+            dot.appendChild(wave);
+          }
+        }
 
         // The popup (built with textContent, never innerHTML)
         const popup = document.createElement("div");

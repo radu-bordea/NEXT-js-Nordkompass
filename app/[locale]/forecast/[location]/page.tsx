@@ -107,7 +107,8 @@ export default async function ForecastPage({
           {nights.map(({ key, summary }, index) => (
             <article
               key={key}
-              className="flex flex-col gap-4 rounded-lg border bg-card p-5"
+              className="fade-up flex flex-col gap-4 rounded-lg border bg-card p-5"
+              style={{ animationDelay: `${index * 300}ms` }}
             >
               <header className="flex items-start justify-between gap-3">
                 <div>

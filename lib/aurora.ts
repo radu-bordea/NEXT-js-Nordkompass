@@ -34,6 +34,7 @@ export type SpotTonight = {
   level: AuroraLevel;
   bestTime: Date | null;
   cloud: number | null;
+  nowLevel: AuroraLevel | null; // the chance in the current hour, null if not in tonight's hours
 };
 
 /* ---------- Inputs: Kp, sun, factors ---------- */
@@ -171,12 +172,7 @@ export function summarizeNight(
 export function spotTonight(
   hours: MetHour[],
   kpPoints: KpPoint[],
-  spot: {
-    lat: number;
-    lon: number;
-    darkness: 1 | 2 | 3 | 4 | 5;
-    viewNorth: boolean;
-  },
+  spot: { lat: number; lon: number; darkness: 1 | 2 | 3 | 4 | 5; viewNorth: boolean },
 ): SpotTonight {
   const scored = hours.map((h) => ({
     h,
@@ -186,14 +182,21 @@ export function spotTonight(
       (spot.viewNorth ? 1 : 0.85),
   }));
 
+  // The hour we're in right now (MET hours start on the hour)
+  const now = Date.now();
+  const current = scored.find(
+    (s) => now >= s.h.time.getTime() && now < s.h.time.getTime() + 60 * 60 * 1000,
+  );
+  const nowLevel = current ? levelFromScore(current.score) : null;
+
   const pick = pickBest(scored, (s) => s.score);
-  if (!pick.best)
-    return { score: 0, level: "none", bestTime: null, cloud: null };
+  if (!pick.best) return { score: 0, level: "none", bestTime: null, cloud: null, nowLevel };
 
   return {
     score: pick.max,
     level: levelFromScore(pick.max),
     bestTime: pick.best.h.time,
     cloud: pick.best.h.cloudTotal,
+    nowLevel,
   };
 }

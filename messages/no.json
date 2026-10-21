@@ -55,6 +55,7 @@
     "spotBest": "Best {time}",
     "spotCloud": "{cloud} % skydekke",
     "spotDarkness": "Mørke {value}/5",
+    "spotNow": "Bra akkurat nå",
     "kpExplain": "Aktivitet viser hvor sterkt nordlyset er, basert på Kp-indeksen (0–9). I Bodø er nordlyset ofte synlig selv når aktiviteten er rolig eller moderat. Klar og mørk himmel betyr mest.",
     "aurora": {
       "high": "Høy",
