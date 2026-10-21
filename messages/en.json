@@ -23,6 +23,7 @@
     "subtitle": "Sky and weather for this evening and night, in Norwegian time.",
     "bestLabel": "Clearest sky tonight",
     "bestValue": "{time} · {cloud}% cloud",
+    "auroraBestAt": "Best around {time} at {spot}",
     "noHours": "No evening hours in the forecast right now. Check back later today.",
     "error": "We couldn't load the weather forecast right now. Please try again in a few minutes.",
     "colTime": "Time",

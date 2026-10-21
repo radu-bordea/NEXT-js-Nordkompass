@@ -35,6 +35,7 @@ export type SpotTonight = {
   score: number;
   level: AuroraLevel;
   bestTime: Date | null;
+  goodUntil: Date | null;
   cloud: number | null;
   nowLevel: AuroraLevel | null; // the chance in the current hour, null if not in tonight's hours
 };
@@ -203,12 +204,20 @@ export function spotTonight(
 
   const pick = pickBest(scored, (s) => s.score);
   if (!pick.best)
-    return { score: 0, level: "none", bestTime: null, cloud: null, nowLevel };
+    return {
+      score: 0,
+      level: "none",
+      bestTime: null,
+      goodUntil: null,
+      cloud: null,
+      nowLevel,
+    };
 
   return {
     score: pick.max,
     level: levelFromScore(pick.max),
     bestTime: pick.best.h.time,
+    goodUntil: pick.last?.h.time ?? null,
     cloud: pick.best.h.cloudTotal,
     nowLevel,
   };

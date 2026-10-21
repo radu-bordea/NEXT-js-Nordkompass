@@ -23,6 +23,7 @@
     "subtitle": "Himmel og vær i kveld og i natt, i norsk tid.",
     "bestLabel": "Klarest himmel i kveld",
     "bestValue": "{time} · {cloud} % skydekke",
+    "auroraBestAt": "Best rundt {time} ved {spot}",
     "noHours": "Ingen kveldstimer i prognosen akkurat nå. Sjekk igjen senere i dag.",
     "error": "Vi kunne ikke hente værprognosen akkurat nå. Prøv igjen om noen minutter.",
     "colTime": "Tid",
