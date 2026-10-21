@@ -1,19 +1,22 @@
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Cloud, Droplets, Sparkles, Thermometer, Wind } from "lucide-react";
+import { Link } from "@/i18n/navigation";
 import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
 import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
-import { activityLevel, auroraForHour, type AuroraLevel } from "@/lib/aurora";
 import {
-  getTonightHours,
-  skyLevel,
-  TIME_ZONE,
-  type SkyLevel,
-} from "@/lib/weather";
+  activityLevel,
+  auroraForHour,
+  levelFromScore,
+  pickBest,
+  spotTonight,
+  type AuroraLevel,
+} from "@/lib/aurora";
+import { getTonightHours, skyLevel, TIME_ZONE, type SkyLevel } from "@/lib/weather";
 import { locations, getLocation } from "@/lib/locations";
 import { LocationPicker } from "@/components/location-picker";
 import { WeatherIcon } from "@/components/weather-icon";
-import { Link } from "@/i18n/navigation";
+import { SpotsMap, type MapSpot } from "@/components/spots-map";
 
 export function generateStaticParams() {
   return Object.keys(locations).map((location) => ({ location }));
@@ -51,11 +54,9 @@ export default async function TonightPage({
     fetchKpForecast(),
   ]);
 
-  const hours: MetHour[] =
-    metResult.status === "fulfilled" ? metResult.value : [];
+  const hours: MetHour[] = metResult.status === "fulfilled" ? metResult.value : [];
   const failed = metResult.status === "rejected";
-  const kpPoints: KpPoint[] =
-    kpResult.status === "fulfilled" ? kpResult.value : [];
+  const kpPoints: KpPoint[] = kpResult.status === "fulfilled" ? kpResult.value : [];
   const kpFailed = kpResult.status === "rejected";
 
   const rows = getTonightHours(hours).map((h) => ({
@@ -69,20 +70,56 @@ export default async function TonightPage({
     timeZone: TIME_ZONE,
   });
 
-  // Best aurora hour (highest score)
-  const bestAurora = rows.reduce<(typeof rows)[number] | null>(
-    (best, r) => (r.aurora.score > (best?.aurora.score ?? 0) ? r : best),
-    null,
-  );
+  // Earliest hour that's nearly as good as the best, plus the good window
+  const auroraPick = pickBest(rows, (r) => r.aurora.score);
+  const bestAurora = auroraPick.best;
+  const goodUntil = auroraPick.last;
+  const tonightLevel: AuroraLevel = bestAurora ? levelFromScore(auroraPick.max) : "none";
 
   // Clearest hour (lowest cloud cover)
   const bestSky = rows
     .filter((r) => r.h.cloudTotal !== null)
     .reduce<MetHour | null>(
-      (min, r) =>
-        min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min,
+      (min, r) => (min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min),
       null,
     );
+
+  // Weather for each spot in this area, then rank by tonight's best chance
+  const spotWeather = await Promise.allSettled(
+    place.spots.map((s) => fetchMetForecast(s.lat, s.lon)),
+  );
+
+  const rankedSpots = place.spots
+    .map((spot, i) => {
+      const result = spotWeather[i];
+      const spotHours = result.status === "fulfilled" ? getTonightHours(result.value) : [];
+      return { spot, tonight: spotTonight(spotHours, kpPoints, spot) };
+    })
+    .sort((a, b) => b.tonight.score - a.tonight.score);
+
+  const noteLang = locale === "no" ? "no" : "en";
+
+  const spotDetail = (s: (typeof rankedSpots)[number]) =>
+    [
+      s.tonight.bestTime && s.tonight.level !== "none"
+        ? t("spotBest", { time: timeFmt.format(s.tonight.bestTime) })
+        : null,
+      s.tonight.cloud !== null ? t("spotCloud", { cloud: Math.round(s.tonight.cloud) }) : null,
+      t("spotDarkness", { value: s.spot.darkness }),
+    ]
+      .filter(Boolean)
+      .join(" · ");
+
+  const mapSpots: MapSpot[] = rankedSpots.map((s) => ({
+    slug: s.spot.slug,
+    name: s.spot.name,
+    lat: s.spot.lat,
+    lon: s.spot.lon,
+    level: s.tonight.level,
+    levelLabel: t(`aurora.${s.tonight.level}`),
+    detail: spotDetail(s),
+    note: s.spot.note[noteLang],
+  }));
 
   return (
     <section className="flex flex-col gap-6">
@@ -95,32 +132,30 @@ export default async function TonightPage({
       </div>
 
       {failed && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
-          {t("error")}
-        </div>
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("error")}</div>
       )}
 
       {!failed && rows.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
           {/* Aurora tonight */}
           <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
-            <Sparkles
-              className="h-10 w-10 shrink-0 text-emerald-500"
-              aria-hidden="true"
-            />
+            <Sparkles className="h-10 w-10 shrink-0 text-emerald-500" aria-hidden="true" />
             <div>
-              <p className="text-sm text-muted-foreground">
-                {t("auroraLabel")}
-              </p>
-              {bestAurora && bestAurora.aurora.level !== "none" ? (
+              <p className="text-sm text-muted-foreground">{t("auroraLabel")}</p>
+              {bestAurora && tonightLevel !== "none" ? (
                 <>
-                  <p className="mt-1 text-2xl font-semibold">
-                    {t(`aurora.${bestAurora.aurora.level}`)}
-                  </p>
+                  <p className="mt-1 text-2xl font-semibold">{t(`aurora.${tonightLevel}`)}</p>
                   <p className="text-sm text-muted-foreground tabular-nums">
-                    {t("auroraBest", {
-                      time: timeFmt.format(bestAurora.h.time),
-                    })}
+                    {t("auroraBest", { time: timeFmt.format(bestAurora.h.time) })}
+                    {goodUntil && goodUntil !== bestAurora && (
+                      <>
+                        {" · "}
+                        {t("auroraWindow", {
+                          from: timeFmt.format(bestAurora.h.time),
+                          to: timeFmt.format(goodUntil.h.time),
+                        })}
+                      </>
+                    )}
                   </p>
                 </>
               ) : (
@@ -132,14 +167,9 @@ export default async function TonightPage({
           {/* Clearest sky */}
           {bestSky && (
             <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
-              <WeatherIcon
-                symbol={bestSky.symbol}
-                className="h-10 w-10 shrink-0"
-              />
+              <WeatherIcon symbol={bestSky.symbol} className="h-10 w-10 shrink-0" />
               <div>
-                <p className="text-sm text-muted-foreground">
-                  {t("bestLabel")}
-                </p>
+                <p className="text-sm text-muted-foreground">{t("bestLabel")}</p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                   {t("bestValue", {
                     time: timeFmt.format(bestSky.time),
@@ -152,16 +182,58 @@ export default async function TonightPage({
         </div>
       )}
 
-      {!failed && kpFailed && (
-        <p className="text-sm text-muted-foreground">{t("kpMissing")}</p>
-      )}
+      {/* Best spots tonight */}
+      {!failed && rankedSpots.length > 0 && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-xl font-semibold">{t("spotsTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("spotsSubtitle")}</p>
+          </div>
 
-      {!failed && rows.length === 0 && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
-          {t("noHours")}
+          <SpotsMap spots={mapSpots} />
+
+          <div className="flex flex-wrap gap-2">
+            {(["high", "possible", "low", "none"] as const).map((level) => (
+              <span
+                key={level}
+                className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[level]}`}
+              >
+                {t(`aurora.${level}`)}
+              </span>
+            ))}
+          </div>
+
+          <ol className="flex flex-col gap-2">
+            {rankedSpots.map((s, i) => (
+              <li key={s.spot.slug} className="flex items-start gap-3 rounded-lg border bg-card p-4">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums">
+                  {i + 1}
+                </span>
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="font-medium">{s.spot.name}</span>
+                    <span
+                      className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[s.tonight.level]}`}
+                    >
+                      {t(`aurora.${s.tonight.level}`)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground tabular-nums">{spotDetail(s)}</p>
+                  <p className="text-sm text-muted-foreground">{s.spot.note[noteLang]}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
       )}
 
+      {!failed && kpFailed && <p className="text-sm text-muted-foreground">{t("kpMissing")}</p>}
+
+      {!failed && rows.length === 0 && (
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("noHours")}</div>
+      )}
+
+      {/* Hour by hour */}
       {!failed && rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
@@ -204,7 +276,7 @@ export default async function TonightPage({
                 const sky = skyLevel(h.cloudTotal);
                 const isBest =
                   bestAurora !== null &&
-                  bestAurora.aurora.level !== "none" &&
+                  tonightLevel !== "none" &&
                   h.time.getTime() === bestAurora.h.time.getTime();
                 return (
                   <tr
@@ -213,9 +285,7 @@ export default async function TonightPage({
                   >
                     <td
                       className={`sticky left-0 z-10 border-r bg-card px-4 py-3 font-medium tabular-nums ${
-                        isBest
-                          ? "shadow-[inset_0_0_0_100vmax] shadow-primary/10"
-                          : ""
+                        isBest ? "shadow-[inset_0_0_0_100vmax] shadow-primary/10" : ""
                       }`}
                     >
                       {timeFmt.format(h.time)}
@@ -241,10 +311,7 @@ export default async function TonightPage({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <WeatherIcon
-                          symbol={h.symbol}
-                          className="h-6 w-6 shrink-0"
-                        />
+                        <WeatherIcon symbol={h.symbol} className="h-6 w-6 shrink-0" />
                         <span
                           className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${skyStyles[sky]}`}
                         >
@@ -253,24 +320,21 @@ export default async function TonightPage({
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.cloudTotal === null
-                        ? "–"
-                        : `${Math.round(h.cloudTotal)}%`}
+                      {h.cloudTotal === null ? "–" : `${Math.round(h.cloudTotal)}%`}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.precipitation === null
-                        ? "–"
-                        : `${h.precipitation.toFixed(1)} mm`}
+                      {h.precipitation === null ? "–" : `${h.precipitation.toFixed(1)} mm`}
                     </td>
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.temperature === null
-                        ? "–"
-                        : `${Math.round(h.temperature)}°`}
+                      {h.temperature === null ? "–" : `${Math.round(h.temperature)}°`}
                     </td>
-                    <td className="px-4 py-3 text-right tabular-nums">
-                      {h.windSpeed === null
-                        ? "–"
-                        : `${Math.round(h.windSpeed)} m/s`}
+                    <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
+                      {h.windSpeed === null ? "–" : `${Math.round(h.windSpeed)} m/s`}
+                      {h.windGust !== null && (
+                        <span className="ml-1 text-xs text-muted-foreground">
+                          ({t("gust", { value: Math.round(h.windGust) })})
+                        </span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -281,9 +345,7 @@ export default async function TonightPage({
       )}
 
       {!failed && rows.length > 0 && (
-        <p className="max-w-prose text-sm text-muted-foreground">
-          {t("kpExplain")}
-        </p>
+        <p className="max-w-prose text-sm text-muted-foreground">{t("kpExplain")}</p>
       )}
 
       <Link

@@ -12,6 +12,7 @@
 - npm install lucide-react
 - npm install suncalc
 - npm install -D @types/suncalc
+- npm install maplibre-gl
 
 ### prisma
 - npm install prisma tsx --save-dev

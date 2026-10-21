@@ -8,6 +8,7 @@ const Details = z.object({
   cloud_area_fraction_high: z.number().optional(),
   air_temperature: z.number().optional(),
   wind_speed: z.number().optional(),
+  wind_speed_of_gust: z.number().optional(),
 });
 
 const NextHour = z.object({
@@ -42,6 +43,7 @@ export type MetHour = {
   cloudHigh: number | null;
   temperature: number | null;
   windSpeed: number | null;
+  windGust: number | null; // m/s, strongest short bursts
   precipitation: number | null; // mm in the next hour
   precipitationChance: number | null; // %
   symbol: string | null; // MET icon name
@@ -81,6 +83,7 @@ export async function fetchMetForecast(
       cloudHigh: d.cloud_area_fraction_high ?? null,
       temperature: d.air_temperature ?? null,
       windSpeed: d.wind_speed ?? null,
+      windGust: d.wind_speed_of_gust ?? null,
       precipitation: next?.details?.precipitation_amount ?? null,
       precipitationChance: next?.details?.probability_of_precipitation ?? null,
       symbol: next?.summary?.symbol_code ?? null,

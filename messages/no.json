@@ -31,6 +31,7 @@
     "colPrecip": "Nedbør",
     "colTemp": "Temp",
     "colWind": "Vind",
+    "gust": "kast {value}",
     "level": {
       "clear": "Klart",
       "partly": "Delvis skyet",
@@ -38,6 +39,7 @@
     },
     "auroraLabel": "Nordlys i kveld",
     "auroraBest": "Best rundt {time}",
+    "auroraWindow": "Bra {from}–{to}",
     "auroraNone": "Lite sannsynlig i kveld",
     "kpMissing": "Nordlysaktivitet er ikke tilgjengelig akkurat nå, så sjansen bygger bare på skydekke og mørke.",
     "colAurora": "Nordlys",
@@ -48,6 +50,11 @@
       "active": "Aktiv",
       "storm": "Storm"
     },
+    "spotsTitle": "Beste steder i kveld",
+    "spotsSubtitle": "Rangert etter nordlyssjanse, skydekke og hvor mørkt det er. Trykk på et sted i kartet for detaljer.",
+    "spotBest": "Best {time}",
+    "spotCloud": "{cloud} % skydekke",
+    "spotDarkness": "Mørke {value}/5",
     "kpExplain": "Aktivitet viser hvor sterkt nordlyset er, basert på Kp-indeksen (0–9). I Bodø er nordlyset ofte synlig selv når aktiviteten er rolig eller moderat. Klar og mørk himmel betyr mest.",
     "aurora": {
       "high": "Høy",

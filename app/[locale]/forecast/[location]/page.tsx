@@ -43,9 +43,11 @@ export default async function ForecastPage({
     fetchKpForecast(),
   ]);
 
-  const hours: MetHour[] = metResult.status === "fulfilled" ? metResult.value : [];
+  const hours: MetHour[] =
+    metResult.status === "fulfilled" ? metResult.value : [];
   const failed = metResult.status === "rejected";
-  const kpPoints: KpPoint[] = kpResult.status === "fulfilled" ? kpResult.value : [];
+  const kpPoints: KpPoint[] =
+    kpResult.status === "fulfilled" ? kpResult.value : [];
 
   const nights = groupNights(hours, 3).map((n) => ({
     key: n.key,
@@ -95,17 +97,26 @@ export default async function ForecastPage({
       )}
 
       {!failed && nights.length === 0 && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("noData")}</div>
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
+          {t("noData")}
+        </div>
       )}
 
       {!failed && nights.length > 0 && (
         <div className="grid gap-4 md:grid-cols-3">
           {nights.map(({ key, summary }, index) => (
-            <article key={key} className="flex flex-col gap-4 rounded-lg border bg-card p-5">
+            <article
+              key={key}
+              className="flex flex-col gap-4 rounded-lg border bg-card p-5"
+            >
               <header className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">{nightTitle(index, key)}</h2>
-                  <p className="text-sm text-muted-foreground">{dateFmt.format(fromKey(key))}</p>
+                  <h2 className="text-lg font-semibold">
+                    {nightTitle(index, key)}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {dateFmt.format(fromKey(key))}
+                  </p>
                 </div>
                 <span className="whitespace-nowrap rounded-full border px-2.5 py-0.5 text-xs text-muted-foreground">
                   {t(`confidence.${confidenceKeys[index] ?? "low"}`)}
@@ -113,16 +124,23 @@ export default async function ForecastPage({
               </header>
 
               <div className="flex items-center gap-3">
-                <Sparkles className="h-8 w-8 shrink-0 text-emerald-500" aria-hidden="true" />
+                <Sparkles
+                  className="h-8 w-8 shrink-0 text-emerald-500"
+                  aria-hidden="true"
+                />
                 <div>
                   <span
                     className={`inline-block rounded-full px-3 py-1 text-sm font-semibold ${auroraStyles[summary.level]}`}
                   >
-                    {summary.level === "none" ? t("unlikely") : tTonight(`aurora.${summary.level}`)}
+                    {summary.level === "none"
+                      ? t("unlikely")
+                      : tTonight(`aurora.${summary.level}`)}
                   </span>
                   {summary.bestTime && summary.level !== "none" && (
                     <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-                      {tTonight("auroraBest", { time: timeFmt.format(summary.bestTime) })}
+                      {tTonight("auroraBest", {
+                        time: timeFmt.format(summary.bestTime),
+                      })}
                     </p>
                   )}
                 </div>
@@ -147,26 +165,46 @@ export default async function ForecastPage({
                 <div>
                   <dt className="text-muted-foreground">{t("clearest")}</dt>
                   <dd className="flex items-center gap-1.5 font-medium tabular-nums">
-                    <WeatherIcon symbol={summary.symbol} className="h-5 w-5 shrink-0" />
-                    {summary.minCloud === null ? "–" : `${Math.round(summary.minCloud)}%`}
+                    <WeatherIcon
+                      symbol={summary.symbol}
+                      className="h-5 w-5 shrink-0"
+                    />
+                    {summary.minCloud === null
+                      ? "–"
+                      : `${Math.round(summary.minCloud)}%`}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t("lowestTemp")}</dt>
                   <dd className="font-medium tabular-nums">
-                    {summary.minTemp === null ? "–" : `${Math.round(summary.minTemp)}°`}
+                    {summary.minTemp === null
+                      ? "–"
+                      : `${Math.round(summary.minTemp)}°`}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t("maxWind")}</dt>
                   <dd className="font-medium tabular-nums">
-                    {summary.maxWind === null ? "–" : `${Math.round(summary.maxWind)} m/s`}
+                    {summary.maxWind === null
+                      ? "–"
+                      : `${Math.round(summary.maxWind)} m/s`}
+                    {summary.maxGust !== null && (
+                      <span className="ml-1 text-xs text-muted-foreground">
+                        (
+                        {tTonight("gust", {
+                          value: Math.round(summary.maxGust),
+                        })}
+                        )
+                      </span>
+                    )}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-muted-foreground">{t("precip")}</dt>
                   <dd className="font-medium tabular-nums">
-                    {summary.precip === null ? "–" : `${summary.precip.toFixed(1)} mm`}
+                    {summary.precip === null
+                      ? "–"
+                      : `${summary.precip.toFixed(1)} mm`}
                   </dd>
                 </div>
               </dl>
@@ -188,13 +226,28 @@ export default async function ForecastPage({
       <p className="max-w-prose text-sm text-muted-foreground">{t("note")}</p>
 
       <p className="text-xs text-muted-foreground">
-        <a href="https://www.met.no/en" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+        <a
+          href="https://www.met.no/en"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
           {tTonight("credit")}
         </a>{" "}
-        <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+        <a
+          href="https://creativecommons.org/licenses/by/4.0/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
           {tTonight("licence")}
         </a>{" "}
-        <a href="https://www.swpc.noaa.gov/" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
+        <a
+          href="https://www.swpc.noaa.gov/"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-foreground"
+        >
           {tTonight("creditNoaa")}
         </a>
       </p>
