@@ -308,7 +308,8 @@ export default async function TonightPage({
   // Normal: real OVATION values (under 3 are skipped, so daytime gives few or no points).
   // Dev test: ?glowTest=storm etc. replaces them with a fake band (null in production).
   const testGlow = glowTest(glowTestName, GLOW_BOX);
-  const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX) : []);
+// min 1 (instead of 3) so the glow fades out softly instead of stopping at a hard edge
+const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
 
   // Glow on by default at night (or always while testing), off in daylight
   const glowOn = testGlow !== null || nowStatus !== "daylight";

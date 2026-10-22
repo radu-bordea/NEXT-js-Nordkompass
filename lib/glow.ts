@@ -67,14 +67,23 @@ const LIGHT_STOPS: Stop[] = [
 ];
 
 /** OVATION value → [r, g, b, a] by blending between the two nearest stops */
-function colorFor(value: number, stops: Stop[]): [number, number, number, number] {
-  if (value <= stops[0][0]) return [stops[0][1], stops[0][2], stops[0][3], stops[0][4]];
+function colorFor(
+  value: number,
+  stops: Stop[],
+): [number, number, number, number] {
+  if (value <= stops[0][0])
+    return [stops[0][1], stops[0][2], stops[0][3], stops[0][4]];
   for (let i = 1; i < stops.length; i++) {
     const [v1, r1, g1, b1, a1] = stops[i];
     if (value <= v1) {
       const [v0, r0, g0, b0, a0] = stops[i - 1];
       const f = (value - v0) / (v1 - v0);
-      return [r0 + (r1 - r0) * f, g0 + (g1 - g0) * f, b0 + (b1 - b0) * f, a0 + (a1 - a0) * f];
+      return [
+        r0 + (r1 - r0) * f,
+        g0 + (g1 - g0) * f,
+        b0 + (b1 - b0) * f,
+        a0 + (a1 - a0) * f,
+      ];
     }
   }
   const last = stops[stops.length - 1];
@@ -86,13 +95,20 @@ function colorFor(value: number, stops: Stop[]): [number, number, number, number
 // The image must use the same stretching, otherwise the band would sit too far
 // south. So each image row is a step in Mercator-Y, not in latitude.
 
-const mercY = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
-const latFromMercY = (y: number) => ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
+const mercY = (lat: number) =>
+  Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const latFromMercY = (y: number) =>
+  ((2 * Math.atan(Math.exp(y)) - Math.PI / 2) * 180) / Math.PI;
 
 // ---------- build the image ----------
 
 /** Corners of the image on the map: top-left, top-right, bottom-right, bottom-left */
-export const GLOW_COORDINATES: [[number, number], [number, number], [number, number], [number, number]] = [
+export const GLOW_COORDINATES: [
+  [number, number],
+  [number, number],
+  [number, number],
+  [number, number],
+] = [
   [GLOW_BOX.west, GLOW_BOX.north],
   [GLOW_BOX.east, GLOW_BOX.north],
   [GLOW_BOX.east, GLOW_BOX.south],
@@ -167,5 +183,14 @@ export function buildGlowImage(points: AuroraPoint[], dark: boolean): string {
   }
 
   ctx.putImageData(image, 0, 0);
-  return canvas.toDataURL("image/png");
+
+  // Soften the steps between 1° squares with a light blur (like a real glow).
+  // Browsers without canvas filters just skip the blur, which is fine.
+  const soft = document.createElement("canvas");
+  soft.width = WIDTH;
+  soft.height = HEIGHT;
+  const softCtx = soft.getContext("2d")!;
+  softCtx.filter = "blur(10px)";
+  softCtx.drawImage(canvas, 0, 0);
+  return soft.toDataURL("image/png");
 }

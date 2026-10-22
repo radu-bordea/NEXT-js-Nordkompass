@@ -122,7 +122,7 @@
   },
   "Moon": {
     "title": "Moon tonight",
-    "lit": "{lit}% lit",
+    "lit": "{lit}% full",
     "upAllNight": "Up all night",
     "neverUp": "Below the horizon all night",
     "upBetween": "Up {from}–{to}",
@@ -135,6 +135,17 @@
       "waningGibbous": "Waning gibbous",
       "lastQuarter": "Last quarter",
       "waningCrescent": "Waning crescent"
+    },
+    "litShort": "{lit}%",
+    "phaseSimple": {
+      "new": "New moon (dark)",
+      "waxingCrescent": "Thin moon",
+      "firstQuarter": "Half moon",
+      "waxingGibbous": "Almost full moon",
+      "full": "Full moon",
+      "waningGibbous": "Almost full moon",
+      "lastQuarter": "Half moon",
+      "waningCrescent": "Thin moon"
     },
     "effect": {
       "dark": "Dark sky: good even for weak aurora",

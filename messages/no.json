@@ -136,6 +136,17 @@
       "lastQuarter": "Siste kvarter",
       "waningCrescent": "Avtakende månesigd"
     },
+    "litShort": "{lit} %",
+    "phaseSimple": {
+      "new": "Nymåne (mørkt)",
+      "waxingCrescent": "Tynn måne",
+      "firstQuarter": "Halvmåne",
+      "waxingGibbous": "Nesten fullmåne",
+      "full": "Fullmåne",
+      "waningGibbous": "Nesten fullmåne",
+      "lastQuarter": "Halvmåne",
+      "waningCrescent": "Tynn måne"
+    },
     "effect": {
       "dark": "Mørk himmel: bra selv for svakt nordlys",
       "some": "Litt månelys: svakt nordlys litt vanskeligere å se",
