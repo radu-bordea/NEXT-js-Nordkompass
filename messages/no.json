@@ -119,5 +119,34 @@
     "glowLow": "Svak",
     "glowHigh": "Sterk",
     "glowUpdated": "Live nordlys {time}"
+  },
+  "Moon": {
+    "title": "Månen i kveld",
+    "lit": "{lit} % opplyst",
+    "upAllNight": "Oppe hele natten",
+    "neverUp": "Under horisonten hele natten",
+    "upBetween": "Oppe {from}–{to}",
+    "phase": {
+      "new": "Nymåne",
+      "waxingCrescent": "Voksende månesigd",
+      "firstQuarter": "Første kvarter",
+      "waxingGibbous": "Voksende måne",
+      "full": "Fullmåne",
+      "waningGibbous": "Avtakende måne",
+      "lastQuarter": "Siste kvarter",
+      "waningCrescent": "Avtakende månesigd"
+    },
+    "effect": {
+      "dark": "Mørk himmel: bra selv for svakt nordlys",
+      "some": "Litt månelys: svakt nordlys litt vanskeligere å se",
+      "bright": "Lys måne: svakt nordlys vanskeligere å se, sterkt nordlys fortsatt tydelig"
+    },
+    "label": "Måne",
+    "neverUpShort": "Ikke oppe: mørk himmel",
+    "effectShort": {
+      "dark": "Mørk himmel",
+      "some": "Litt månelys",
+      "bright": "Lys måne"
+    }
   }
 }

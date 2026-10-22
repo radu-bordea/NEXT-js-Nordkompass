@@ -1,22 +1,45 @@
-import * as SunCalc from "suncalc";
+/**
+ * Step 2: "RIGHT NOW" score for one spot (live)
+ *
+ * score = aurora chance × clear sky × darkness × spot light × moon × solar wind boost
+ *
+ *   aurora chance   NOAA OVATION, what's visible from the spot (overhead or low north)
+ *   clear sky       MET cloud cover this hour at the spot
+ *   darkness        sun below −12° = fully dark, −6° to −12° = half, above = daylight
+ *   spot light      light pollution (darkness rating 1–5 in locations.ts)
+ *   moon            bright moon hides weak aurora a bit (lib/moon.ts, max −15%)
+ *   solar wind      southward Bz (negative) = aurora may get stronger soon
+ *
+ * Result → level (high/possible/low/none) → status shown to users:
+ *   go      "Go out now"          (level high → spot pulses)
+ *   maybe   "Maybe — worth a look"
+ *   cloudy  "Aurora active, but too cloudy"
+ *   wait    "Not now"
+ *   daylight "Too bright — wait for darkness"
+ */
+
+import { sunAltitudeDeg } from "@/lib/astro";
 import type { MetHour } from "@/lib/sources/met";
 import type { Spot } from "@/lib/locations";
-import type { Ovation } from "@/lib/sources/ovation"
+import type { Ovation } from "@/lib/sources/ovation";
 import type { SolarWind } from "@/lib/sources/solar-wind";
+import { moonFactor } from "@/lib/moon";
 
 export type LiveLevel = "high" | "possible" | "low" | "none" | "daylight";
 export type LiveStatus = "go" | "maybe" | "wait" | "cloudy" | "daylight";
 
 export type SpotNow = {
-  score: number;
+  score: number; // 0–1
   level: LiveLevel;
   status: LiveStatus;
-  chance: number;          // OVATION chance visible from the spot (0–100)
-  cloud: number | null;    // MET cloud this hour
-  strengthening: boolean;  // southward solar wind → may get stronger soon
+  chance: number; // OVATION chance visible from the spot (0–100)
+  cloud: number | null; // MET cloud this hour (%)
+  strengthening: boolean; // southward solar wind → may get stronger soon
 };
 
-// ---------- factors ----------
+// ======================================================================
+// FACTORS (each 0–1, multiplied together)
+// ======================================================================
 
 /** OVATION chance → 0..1 (tune these with your sighting log) */
 function chanceFactor(chance: number) {
@@ -27,6 +50,7 @@ function chanceFactor(chance: number) {
   return 0.05;
 }
 
+/** Cloud cover % → 0..1 (unknown cloud counts as half) */
 function clearFactor(cloud: number | null) {
   if (cloud === null) return 0.5;
   if (cloud < 20) return 1;
@@ -36,12 +60,14 @@ function clearFactor(cloud: number | null) {
   return 0.05;
 }
 
+/** Sun height → 0..1 (0 = daylight, aurora not visible at all) */
 function darkFactor(sunAltitudeDeg: number) {
-  if (sunAltitudeDeg <= -12) return 1;
-  if (sunAltitudeDeg <= -6) return 0.5;
+  if (sunAltitudeDeg <= -12) return 1; // nautical night: fully dark
+  if (sunAltitudeDeg <= -6) return 0.5; // nautical twilight: half
   return 0;
 }
 
+/** Spot darkness rating 1–5 → 0..1 (5 = no light pollution) */
 const LIGHT: Record<number, number> = { 1: 0.6, 2: 0.75, 3: 0.85, 4: 0.95, 5: 1 };
 
 /** Southward Bz (negative) feeds the aurora; northward calms it */
@@ -54,6 +80,7 @@ function bzBoost(wind: SolarWind | null) {
   return 1;
 }
 
+/** Score → level (same thresholds as step 1) */
 function levelFromScore(score: number): LiveLevel {
   if (score >= 0.6) return "high";
   if (score >= 0.35) return "possible";
@@ -61,8 +88,11 @@ function levelFromScore(score: number): LiveLevel {
   return "none";
 }
 
-// ---------- main ----------
+// ======================================================================
+// MAIN
+// ======================================================================
 
+/** The MET hour that contains `now` (e.g. 21:00 for 21:37) */
 export function currentHour(hours: MetHour[], now = new Date()) {
   const t = now.getTime();
   return (
@@ -73,6 +103,7 @@ export function currentHour(hours: MetHour[], now = new Date()) {
   );
 }
 
+/** Live "right now" result for one spot */
 export function spotNow(
   spot: Spot,
   hours: MetHour[],
@@ -80,21 +111,28 @@ export function spotNow(
   wind: SolarWind | null,
   now = new Date(),
 ): SpotNow {
-  const sunAlt =
-    (SunCalc.getPosition(now, spot.lat, spot.lon).altitude * 180) / Math.PI;
+  const sunAlt = sunAltitudeDeg(now, spot.lat, spot.lon);
   const dark = darkFactor(sunAlt);
   const cloud = currentHour(hours, now)?.cloudTotal ?? null;
   const chance = ovation.visibleFrom(spot.lat, spot.lon, spot.viewNorth);
   const strengthening = (wind?.bzAvg30 ?? 0) <= -5;
 
+  // Daylight: nothing else matters
   if (dark === 0) {
     return { score: 0, level: "daylight", status: "daylight", chance, cloud, strengthening };
   }
 
   const activity = chanceFactor(chance);
+  const moon = moonFactor(now, spot.lat, spot.lon, activity);
+
   const score = Math.min(
     1,
-    activity * clearFactor(cloud) * dark * (LIGHT[spot.darkness] ?? 0.8) * bzBoost(wind),
+    activity *
+      clearFactor(cloud) *
+      dark *
+      (LIGHT[spot.darkness] ?? 0.8) *
+      moon *
+      bzBoost(wind),
   );
   const level = levelFromScore(score);
 

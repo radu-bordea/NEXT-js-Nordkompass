@@ -1,8 +1,30 @@
-import * as SunCalc from "suncalc";
+/**
+ * Step 1: aurora FORECAST score (plan for tonight and the next nights)
+ *
+ * score per hour = activity × clear sky × darkness × moon
+ *
+ *   activity   NOAA Kp forecast for that 3-hour block (same for the whole planet)
+ *   clear sky  MET cloud cover that hour (0% cloud → 1, 100% → 0)
+ *   darkness   sun below −12° = 1, −6° to −12° = 0.5, above −6° = daylight (score 0)
+ *   moon       bright moon high in the sky lowers weak/medium aurora up to −15%
+ *              (lib/moon.ts). Kp 3+ (strong for Bodø) is not affected.
+ *
+ * For spots, two more factors: light pollution (darkness rating 1–5) and
+ * whether the spot has an open view to the north.
+ *
+ * Score → level: high ≥ 0.6, possible ≥ 0.35, low ≥ 0.15, else none.
+ * These thresholds are version 1: tune them with the sighting log.
+ *
+ * Step 2 (live, "right now") is in lib/aurora-live.ts.
+ */
+
 import type { KpPoint } from "@/lib/sources/noaa";
 import type { MetHour } from "@/lib/sources/met";
+import { sunAltitudeDeg } from "@/lib/astro";
+import { moonFactor, moonTonight, type MoonTonight } from "@/lib/moon";
 
 const THREE_HOURS = 3 * 60 * 60 * 1000;
+const ONE_HOUR = 60 * 60 * 1000;
 
 /* ---------- Types ---------- */
 
@@ -13,6 +35,7 @@ export type AuroraHour = {
   level: AuroraLevel;
   kp: number | null;
   sunAltitude: number; // degrees
+  moon: number; // moon factor 0.85–1 (1 = no effect)
 };
 
 export type ActivityLevel = "quiet" | "moderate" | "active" | "storm";
@@ -29,6 +52,7 @@ export type NightSummary = {
   maxWind: number | null;
   maxGust: number | null;
   precip: number | null;
+  moon: MoonTonight | null; // phase, % lit, when it's up
 };
 
 export type SpotTonight = {
@@ -52,8 +76,10 @@ export function kpAt(points: KpPoint[], time: Date): KpPoint | null {
   );
 }
 
+// Sun height in degrees. Uses lib/astro.ts, which handles suncalc 1.x (radians)
+// and 2.x (degrees) correctly.
 export function sunAltitude(time: Date, lat: number, lon: number): number {
-  return (SunCalc.getPosition(time, lat, lon).altitude * 180) / Math.PI;
+  return sunAltitudeDeg(time, lat, lon);
 }
 
 // Sun below -12° = dark enough. Between -6° and -12° = twilight, weaker aurora.
@@ -72,6 +98,7 @@ function activityFactor(kp: number | null): number {
   return 0.3;
 }
 
+// Cloud cover % → 0..1 (unknown cloud counts as half)
 function skyFactor(cloud: number | null): number {
   if (cloud === null) return 0.5;
   return Math.max(0, 1 - cloud / 100);
@@ -98,7 +125,7 @@ export function activityLevel(kp: number): ActivityLevel {
   return "quiet";
 }
 
-// Aurora chance for one hour at one place: activity × sky × darkness
+// Aurora chance for one hour at one place: activity × sky × darkness × moon
 export function auroraForHour(
   hour: MetHour,
   kpPoints: KpPoint[],
@@ -110,11 +137,20 @@ export function auroraForHour(
   const dark = darknessFactor(altitude);
 
   if (dark === 0) {
-    return { score: 0, level: "daylight", kp, sunAltitude: altitude };
+    return { score: 0, level: "daylight", kp, sunAltitude: altitude, moon: 1 };
   }
 
-  const score = activityFactor(kp) * skyFactor(hour.cloudTotal) * dark;
-  return { score, level: levelFromScore(score), kp, sunAltitude: altitude };
+  // Check the moon in the middle of the hour (e.g. 21:30 for the 21:00 row)
+  const activity = activityFactor(kp);
+  const moon = moonFactor(
+    new Date(hour.time.getTime() + ONE_HOUR / 2),
+    lat,
+    lon,
+    activity,
+  );
+
+  const score = activity * skyFactor(hour.cloudTotal) * dark * moon;
+  return { score, level: levelFromScore(score), kp, sunAltitude: altitude, moon };
 }
 
 /* ---------- Picking the best hour ---------- */
@@ -159,6 +195,16 @@ export function summarizeNight(
   const gusts = hours.map((h) => h.windGust).filter(present);
   const precips = hours.map((h) => h.precipitation).filter(present);
 
+  // Moon over the night: first hour → end of the last hour
+  const moon = hours.length
+    ? moonTonight(
+        hours[0].time,
+        new Date(hours[hours.length - 1].time.getTime() + ONE_HOUR),
+        lat,
+        lon,
+      )
+    : null;
+
   return {
     level: pick.best ? levelFromScore(pick.max) : "none",
     bestTime: pick.best?.h.time ?? null,
@@ -171,6 +217,7 @@ export function summarizeNight(
     maxWind: winds.length ? Math.max(...winds) : null,
     maxGust: gusts.length ? Math.max(...gusts) : null,
     precip: precips.length ? precips.reduce((sum, p) => sum + p, 0) : null,
+    moon,
   };
 }
 
@@ -186,6 +233,7 @@ export function spotTonight(
     viewNorth: boolean;
   },
 ): SpotTonight {
+  // Hour score (incl. moon) × light pollution × view north (−15% if blocked)
   const scored = hours.map((h) => ({
     h,
     score:
@@ -197,8 +245,7 @@ export function spotTonight(
   // The hour we're in right now (MET hours start on the hour)
   const now = Date.now();
   const current = scored.find(
-    (s) =>
-      now >= s.h.time.getTime() && now < s.h.time.getTime() + 60 * 60 * 1000,
+    (s) => now >= s.h.time.getTime() && now < s.h.time.getTime() + ONE_HOUR,
   );
   const nowLevel = current ? levelFromScore(current.score) : null;
 

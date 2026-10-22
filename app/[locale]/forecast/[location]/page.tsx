@@ -1,6 +1,15 @@
+/**
+ * Forecast page: /forecast/[location] — the next 3 nights (step 1 forecast)
+ *
+ * Each night card: aurora level + best time + good window, activity (Kp),
+ * clearest sky, lowest temperature, wind + gusts, rain/snow, and the moon.
+ * All numbers come from summarizeNight() in lib/aurora.ts.
+ * Confidence drops for later nights (weather and Kp forecasts get less certain).
+ */
+
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Moon, Sparkles } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
 import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
@@ -35,6 +44,7 @@ export default async function ForecastPage({
 
   const t = await getTranslations("Forecast");
   const tTonight = await getTranslations("Tonight");
+  const tMoon = await getTranslations("Moon");
   const locale = await getLocale();
   const intlLocale = locale === "no" ? "nb-NO" : "en-GB";
 
@@ -220,6 +230,29 @@ export default async function ForecastPage({
                     {summary.precip === null
                       ? "–"
                       : `${summary.precip.toFixed(1)} mm`}
+                  </dd>
+                </div>
+
+                {/* Moon: % lit + how much it brightens the night (dark / some / bright) */}
+                <div>
+                  <dt className="text-muted-foreground">{tMoon("label")}</dt>
+                  <dd className="flex items-center gap-1.5 font-medium tabular-nums">
+                    <Moon
+                      className="h-4 w-4 shrink-0 text-amber-400"
+                      aria-hidden="true"
+                    />
+                    {summary.moon === null ? (
+                      "–"
+                    ) : (
+                      <span>
+                        {tMoon("lit", { lit: summary.moon.lit })}
+                        <span className="block text-xs font-normal text-muted-foreground">
+                          {summary.moon.neverUp
+                            ? tMoon("neverUpShort")
+                            : tMoon(`effectShort.${summary.moon.brightness}`)}
+                        </span>
+                      </span>
+                    )}
                   </dd>
                 </div>
               </dl>

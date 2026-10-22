@@ -119,5 +119,34 @@
     "glowLow": "Weak",
     "glowHigh": "Strong",
     "glowUpdated": "Live aurora {time}"
+  },
+  "Moon": {
+    "title": "Moon tonight",
+    "lit": "{lit}% lit",
+    "upAllNight": "Up all night",
+    "neverUp": "Below the horizon all night",
+    "upBetween": "Up {from}–{to}",
+    "phase": {
+      "new": "New moon",
+      "waxingCrescent": "Waxing crescent",
+      "firstQuarter": "First quarter",
+      "waxingGibbous": "Waxing gibbous",
+      "full": "Full moon",
+      "waningGibbous": "Waning gibbous",
+      "lastQuarter": "Last quarter",
+      "waningCrescent": "Waning crescent"
+    },
+    "effect": {
+      "dark": "Dark sky: good even for weak aurora",
+      "some": "Some moonlight: weak aurora a bit harder to see",
+      "bright": "Bright moon: weak aurora harder to see, strong aurora still clear"
+    },
+    "label": "Moon",
+    "neverUpShort": "Not up: dark sky",
+    "effectShort": {
+      "dark": "Dark sky",
+      "some": "Some moonlight",
+      "bright": "Bright moon"
+    }
   }
 }

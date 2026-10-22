@@ -16,6 +16,9 @@
  *     - MET hourly clouds + darkness
  *     → "Possible, best around 23:00", ranked spots, hour-by-hour table
  *
+ *  3. MOON (lib/moon.ts): phase, % lit, when it's up → moon card.
+ *     Also a small factor (max −15%, only for weak/medium aurora) in both scores.
+ *
  * Rule to avoid confusion: for THIS MOMENT the live data always wins.
  * The forecast is only used to describe LATER tonight.
  * If live NOAA data fails, we fall back to step 1 for everything.
@@ -55,6 +58,7 @@ import {
 } from "@/lib/weather";
 import { locations, getLocation, type Spot } from "@/lib/locations";
 import { glowTest } from "@/lib/glow-test"; // dev-only fake aurora bands
+import { moonTonight } from "@/lib/moon"; // moon phase + when it's up
 import { GLOW_BOX } from "@/lib/glow"; // area of the map glow
 
 // UI
@@ -63,6 +67,7 @@ import { WeatherIcon } from "@/components/weather-icon";
 import { SpotsMap, type MapSpot } from "@/components/spots-map";
 import { RightNow } from "@/components/right-now";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { MoonCard } from "@/components/moon-card";
 
 // "Right now" must be computed on every request.
 // MET and Kp fetches still use their own cache (revalidate), so MET isn't spammed.
@@ -173,6 +178,14 @@ export default async function TonightPage({
         min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min,
       null,
     );
+
+  // Moon during tonight's hours (first hour → end of last hour),
+  // or the next 12 hours if no night hours are left
+  const nightStart = rows[0]?.h.time ?? now;
+  const nightEnd = rows.length
+    ? new Date(rows[rows.length - 1].h.time.getTime() + 60 * 60 * 1000)
+    : new Date(now.getTime() + 12 * 60 * 60 * 1000);
+  const moon = moonTonight(nightStart, nightEnd, place.lat, place.lon);
 
   // ======================================================================
   // 3. SPOTS: step 1 (tonight) + step 2 (live) for each spot
@@ -344,7 +357,7 @@ export default async function TonightPage({
       )}
 
       {!failed && rows.length > 0 && (
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* TONIGHT'S FORECAST card (step 1) – but if aurora is visible now, say so */}
           <div
             className={`flex items-center gap-4 rounded-lg border bg-card p-5 ${
@@ -423,6 +436,9 @@ export default async function TonightPage({
               </div>
             </div>
           )}
+
+          {/* Moon tonight: phase, when it's up, effect on weak aurora */}
+          <MoonCard moon={moon} timeFmt={timeFmt} />
         </div>
       )}
 
