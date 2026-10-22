@@ -1,9 +1,43 @@
+/**
+ * Tonight page: /tonight/[location]  (e.g. /tonight/bodo, /no/tonight/bodo)
+ *
+ * The page answers two different questions:
+ *
+ *  1. "RIGHT NOW"  (step 2, live)
+ *     - NOAA OVATION: live aurora chance per map square (updates ~5 min)
+ *     - NOAA solar wind: Bz (negative = aurora can get stronger soon)
+ *     - MET: cloud cover this hour at each spot
+ *     - Sun position: is it dark enough?
+ *     → "Go out now" / "Maybe" / "Not now" / "Too cloudy" / "Too bright"
+ *     → drives the "Right now" card, the pulsing dots and the "now" badge
+ *
+ *  2. "TONIGHT'S FORECAST"  (step 1, plan)
+ *     - NOAA Kp forecast (3-hour blocks, same for the whole planet)
+ *     - MET hourly clouds + darkness
+ *     → "Possible, best around 23:00", ranked spots, hour-by-hour table
+ *
+ * Rule to avoid confusion: for THIS MOMENT the live data always wins.
+ * The forecast is only used to describe LATER tonight.
+ * If live NOAA data fails, we fall back to step 1 for everything.
+ *
+ * TESTING THE MAP GLOW (development only):
+ *   add ?glowTest=quiet|normal|good|strong|storm|narrow|faint to the URL,
+ *   e.g. http://localhost:3000/tonight/bodo?glowTest=storm
+ *   (see lib/glow-test.ts). Ignored in production.
+ */
+
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
 import { Cloud, Droplets, Sparkles, Thermometer, Wind } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
-import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
+
+// Data sources
+import { fetchMetForecast, type MetHour } from "@/lib/sources/met"; // weather (MET Norway)
+import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa"; // Kp forecast (step 1)
+import { fetchOvation } from "@/lib/sources/ovation"; // live aurora map (step 2)
+import { fetchSolarWind } from "@/lib/sources/solar-wind"; // live solar wind (step 2)
+
+// Calculations
 import {
   activityLevel,
   auroraForHour,
@@ -11,23 +45,42 @@ import {
   pickBest,
   spotTonight,
   type AuroraLevel,
-} from "@/lib/aurora";
-import { getTonightHours, skyLevel, TIME_ZONE, type SkyLevel } from "@/lib/weather";
-import { locations, getLocation } from "@/lib/locations";
+} from "@/lib/aurora"; // step 1 scoring
+import { spotNow, type LiveStatus } from "@/lib/aurora-live"; // step 2 scoring
+import {
+  getTonightHours,
+  skyLevel,
+  TIME_ZONE,
+  type SkyLevel,
+} from "@/lib/weather";
+import { locations, getLocation, type Spot } from "@/lib/locations";
+import { glowTest } from "@/lib/glow-test"; // dev-only fake aurora bands
+import { GLOW_BOX } from "@/lib/glow"; // area of the map glow
+
+// UI
 import { LocationPicker } from "@/components/location-picker";
 import { WeatherIcon } from "@/components/weather-icon";
 import { SpotsMap, type MapSpot } from "@/components/spots-map";
+import { RightNow } from "@/components/right-now";
+import { AutoRefresh } from "@/components/auto-refresh";
 
+// "Right now" must be computed on every request.
+// MET and Kp fetches still use their own cache (revalidate), so MET isn't spammed.
+export const dynamic = "force-dynamic";
+
+// One page per area (bodo, kjerringoy, saltstraumen, ...)
 export function generateStaticParams() {
   return Object.keys(locations).map((location) => ({ location }));
 }
 
+// Badge colors for the sky column
 const skyStyles: Record<SkyLevel, string> = {
   clear: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300",
   partly: "bg-amber-500/15 text-amber-700 dark:text-amber-300",
   cloudy: "bg-slate-500/15 text-slate-700 dark:text-slate-300",
 };
 
+// Badge colors for aurora levels (forecast)
 const auroraStyles: Record<AuroraLevel, string> = {
   high: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
   possible: "bg-sky-500/15 text-sky-700 dark:text-sky-300",
@@ -36,56 +89,95 @@ const auroraStyles: Record<AuroraLevel, string> = {
   daylight: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 
+// "Visible now" badge (live) – same green as the pulsing map dot
+const nowBadgeClass =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300";
+
+/**
+ * Fallback: turn a step 1 level into a "right now" status.
+ * Only used when OVATION (live) could not be fetched.
+ */
+function fallbackStatus(level: AuroraLevel | null | undefined): LiveStatus {
+  if (level === "high") return "go";
+  if (level === "possible") return "maybe";
+  if (level === "daylight") return "daylight";
+  return "wait";
+}
+
 export default async function TonightPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ location: string }>;
+  searchParams: Promise<{ glowTest?: string }>;
 }) {
   const { location } = await params;
+  const { glowTest: glowTestName } = await searchParams;
   const place = getLocation(location);
   if (!place) notFound();
 
   const t = await getTranslations("Tonight");
   const locale = await getLocale();
 
-  // Fetch weather and aurora data at the same time
-  const [metResult, kpResult] = await Promise.allSettled([
-    fetchMetForecast(place.lat, place.lon),
-    fetchKpForecast(),
-  ]);
+  // ======================================================================
+  // 1. FETCH DATA (all at once; allSettled = one failure doesn't break the page)
+  // ======================================================================
+  const [metResult, kpResult, ovationResult, windResult] =
+    await Promise.allSettled([
+      fetchMetForecast(place.lat, place.lon), // weather at the area centre
+      fetchKpForecast(), // step 1: Kp forecast
+      fetchOvation(), // step 2: live aurora chance grid
+      fetchSolarWind(), // step 2: live Bz / speed
+    ]);
 
-  const hours: MetHour[] = metResult.status === "fulfilled" ? metResult.value : [];
-  const failed = metResult.status === "rejected";
-  const kpPoints: KpPoint[] = kpResult.status === "fulfilled" ? kpResult.value : [];
+  const hours: MetHour[] =
+    metResult.status === "fulfilled" ? metResult.value : [];
+  const failed = metResult.status === "rejected"; // no weather → show error box
+  const kpPoints: KpPoint[] =
+    kpResult.status === "fulfilled" ? kpResult.value : [];
   const kpFailed = kpResult.status === "rejected";
+  const ovation =
+    ovationResult.status === "fulfilled" ? ovationResult.value : null; // null → fallback to step 1
+  const wind = windResult.status === "fulfilled" ? windResult.value : null; // null → no Bz boost
+  const now = new Date();
 
-  // Hour by hour for the area's own point (e.g. Bodø centre)
-  const rows = getTonightHours(hours).map((h) => ({
-    h,
-    aurora: auroraForHour(h, kpPoints, place.lat, place.lon),
-  }));
-
+  // Time format in Norwegian time (e.g. "23:00")
   const timeFmt = new Intl.DateTimeFormat(locale === "no" ? "nb-NO" : "en-GB", {
     hour: "2-digit",
     minute: "2-digit",
     timeZone: TIME_ZONE,
   });
 
-  // Earliest hour that's nearly as good as the best, plus the good window (area point)
+  // ======================================================================
+  // 2. STEP 1 FOR THE AREA POINT (hour-by-hour table)
+  // ======================================================================
+  // Tonight's hours (18:00–06:00) with an aurora score for each hour
+  const rows = getTonightHours(hours).map((h) => ({
+    h,
+    aurora: auroraForHour(h, kpPoints, place.lat, place.lon),
+  }));
+
+  // Earliest hour that's nearly as good as the best (90%), and until when it stays good
   const auroraPick = pickBest(rows, (r) => r.aurora.score);
   const bestAurora = auroraPick.best;
   const goodUntil = auroraPick.last;
-  const tonightLevel: AuroraLevel = bestAurora ? levelFromScore(auroraPick.max) : "none";
+  const tonightLevel: AuroraLevel = bestAurora
+    ? levelFromScore(auroraPick.max)
+    : "none";
 
-  // Clearest hour (lowest cloud cover)
+  // Clearest hour tonight (lowest cloud cover)
   const bestSky = rows
     .filter((r) => r.h.cloudTotal !== null)
     .reduce<MetHour | null>(
-      (min, r) => (min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min),
+      (min, r) =>
+        min === null || r.h.cloudTotal! < min.cloudTotal! ? r.h : min,
       null,
     );
 
-  // Weather for each spot in this area, then rank by tonight's best chance
+  // ======================================================================
+  // 3. SPOTS: step 1 (tonight) + step 2 (live) for each spot
+  // ======================================================================
+  // Each spot has its own MET weather (clouds can differ a lot within 20 km)
   const spotWeather = await Promise.allSettled(
     place.spots.map((s) => fetchMetForecast(s.lat, s.lon)),
   );
@@ -93,12 +185,63 @@ export default async function TonightPage({
   const rankedSpots = place.spots
     .map((spot, i) => {
       const result = spotWeather[i];
-      const spotHours = result.status === "fulfilled" ? getTonightHours(result.value) : [];
-      return { spot, tonight: spotTonight(spotHours, kpPoints, spot) };
+      const allHours = result.status === "fulfilled" ? result.value : [];
+      return {
+        spot,
+        // Step 1: best time tonight, level, cloud (uses tonight's hours only)
+        tonight: spotTonight(getTonightHours(allHours), kpPoints, spot),
+        // Step 2: status right now (needs all hours so the current hour is always found)
+        live: ovation ? spotNow(spot, allHours, ovation, wind, now) : null,
+      };
     })
+    // The list and map numbers are ranked by tonight's plan (stable all evening)
     .sort((a, b) => b.tonight.score - a.tonight.score);
 
-  // The card summarises the best spot when the area has spots, otherwise the area itself
+  // ======================================================================
+  // 4. RIGHT NOW (step 2)
+  // ======================================================================
+  // Spot with the best live score right now
+  const liveBest = rankedSpots
+    .filter((s) => s.live !== null)
+    .sort((a, b) => b.live!.score - a.live!.score)[0];
+
+  // Areas without spots (e.g. Svolvær): treat the area centre as a "spot"
+  const areaAsSpot = {
+    slug: location,
+    name: place.name,
+    lat: place.lat,
+    lon: place.lon,
+    darkness: 2, // town centre → some light pollution
+    viewNorth: true,
+    note: { en: "", no: "" },
+    verified: false,
+  } as Spot;
+
+  const areaLive =
+    !liveBest && ovation
+      ? spotNow(areaAsSpot, hours, ovation, wind, now)
+      : null;
+
+  // Live result used by the "Right now" card (best spot, or the area centre)
+  const nowLive = liveBest?.live ?? areaLive;
+
+  // Final status: live when available, otherwise step 1 fallback
+  const nowStatus: LiveStatus = nowLive
+    ? nowLive.status
+    : fallbackStatus(rankedSpots[0]?.tonight.nowLevel);
+
+  // True when aurora is visible somewhere right now → overrides the forecast card
+  const liveGo = nowStatus === "go";
+
+  // Per spot: should it pulse / show "Visible now"?
+  // Live data when available, otherwise step 1's current-hour level.
+  const isNow = (s: (typeof rankedSpots)[number]) =>
+    s.live ? s.live.status === "go" : s.tonight.nowLevel === "high";
+
+  // ======================================================================
+  // 5. TONIGHT'S FORECAST CARD (step 1)
+  // ======================================================================
+  // Summarises the best spot when the area has spots, otherwise the area itself
   const topSpot = rankedSpots[0];
   const card =
     topSpot && topSpot.tonight.level !== "none"
@@ -115,33 +258,64 @@ export default async function TonightPage({
           spotName: null as string | null,
         };
 
+  // ======================================================================
+  // 6. MAP + LIST DATA
+  // ======================================================================
   const noteLang = locale === "no" ? "no" : "en";
 
+  // Small detail line under each spot: "Best 23:00 · Cloud 20% · Darkness 4/5"
   const spotDetail = (s: (typeof rankedSpots)[number]) =>
     [
       s.tonight.bestTime && s.tonight.level !== "none"
         ? t("spotBest", { time: timeFmt.format(s.tonight.bestTime) })
         : null,
-      s.tonight.cloud !== null ? t("spotCloud", { cloud: Math.round(s.tonight.cloud) }) : null,
+      s.tonight.cloud !== null
+        ? t("spotCloud", { cloud: Math.round(s.tonight.cloud) })
+        : null,
       t("spotDarkness", { value: s.spot.darkness }),
     ]
       .filter(Boolean)
       .join(" · ");
 
+  // Map dots: when a spot is "Go" right now, it's shown as High + "Visible now" and pulses.
+  // Otherwise it shows tonight's forecast level.
   const mapSpots: MapSpot[] = rankedSpots.map((s) => ({
     slug: s.spot.slug,
     name: s.spot.name,
     lat: s.spot.lat,
     lon: s.spot.lon,
-    level: s.tonight.level,
-    levelLabel: t(`aurora.${s.tonight.level}`),
+    level: isNow(s) ? "high" : s.tonight.level,
+    levelLabel: isNow(s) ? t("spotNow") : t(`aurora.${s.tonight.level}`),
     detail: spotDetail(s),
     note: s.spot.note[noteLang],
-    pulse: s.tonight.nowLevel === "high",
+    pulse: isNow(s),
   }));
 
+  // Aurora glow for the map.
+  // Normal: real OVATION values (under 3 are skipped, so daytime gives few or no points).
+  // Dev test: ?glowTest=storm etc. replaces them with a fake band (null in production).
+  const testGlow = glowTest(glowTestName, GLOW_BOX);
+  const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX) : []);
+
+  // Glow on by default at night (or always while testing), off in daylight
+  const glowOn = testGlow !== null || nowStatus !== "daylight";
+
+  // Legend text: real update time, or which test is running
+  const glowUpdated = testGlow
+    ? `TEST ${glowTestName}`
+    : ovation
+      ? timeFmt.format(ovation.observed)
+      : null;
+
+  // ======================================================================
+  // 7. RENDER
+  // ======================================================================
   return (
     <section className="flex flex-col gap-6">
+      {/* Re-fetches the page every 5 min while the tab is open (lobby screens, phones) */}
+      <AutoRefresh seconds={300} />
+
+      {/* Title + area picker */}
       <div className="flex flex-col gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">
           {t("title", { place: place.name })}
@@ -150,51 +324,96 @@ export default async function TonightPage({
         <LocationPicker current={location} />
       </div>
 
+      {/* RIGHT NOW (step 2): live OVATION + solar wind + MET cloud, falls back to step 1 */}
+      <RightNow
+        status={nowStatus}
+        live={nowLive !== null}
+        spotName={liveBest ? liveBest.spot.name : undefined}
+        chance={nowLive?.chance}
+        cloud={nowLive?.cloud}
+        strengthening={nowLive?.strengthening}
+        wind={wind}
+        updated={ovation?.observed ?? null}
+      />
+
+      {/* MET failed → no weather at all */}
       {failed && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("error")}</div>
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
+          {t("error")}
+        </div>
       )}
 
       {!failed && rows.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Aurora tonight (best spot, or the area itself) */}
+          {/* TONIGHT'S FORECAST card (step 1) – but if aurora is visible now, say so */}
           <div
             className={`flex items-center gap-4 rounded-lg border bg-card p-5 ${
-              card.level === "high" ? "aurora-glow" : ""
+              card.level === "high" || liveGo ? "aurora-glow" : ""
             }`}
           >
-            <Sparkles className="relative h-10 w-10 shrink-0 text-emerald-500" aria-hidden="true" />
+            <Sparkles
+              className="relative h-10 w-10 shrink-0 text-emerald-500"
+              aria-hidden="true"
+            />
             <div className="relative">
-              <p className="text-sm text-muted-foreground">{t("auroraLabel")}</p>
-              {card.best && card.level !== "none" ? (
+              <p className="text-sm text-muted-foreground">
+                {t("auroraLabel")}
+              </p>
+
+              {liveGo ? (
+                // A) Live says "Go" → card agrees: High, happening now
                 <>
-                  <p className="mt-1 text-2xl font-semibold">{t(`aurora.${card.level}`)}</p>
+                  <p className="mt-1 text-2xl font-semibold">
+                    {t("aurora.high")}
+                  </p>
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                    {t("happeningNow")}
+                    {liveBest ? ` · ${liveBest.spot.name}` : ""}
+                  </p>
+                </>
+              ) : card.best && card.level !== "none" ? (
+                // B) Normal forecast: level + best time + good window
+                <>
+                  <p className="mt-1 text-2xl font-semibold">
+                    {t(`aurora.${card.level}`)}
+                  </p>
                   <p className="text-sm text-muted-foreground tabular-nums">
                     {card.spotName
-                      ? t("auroraBestAt", { time: timeFmt.format(card.best), spot: card.spotName })
+                      ? t("auroraBestAt", {
+                          time: timeFmt.format(card.best),
+                          spot: card.spotName,
+                        })
                       : t("auroraBest", { time: timeFmt.format(card.best) })}
-                    {card.until && card.until.getTime() !== card.best.getTime() && (
-                      <>
-                        {" · "}
-                        {t("auroraWindow", {
-                          from: timeFmt.format(card.best),
-                          to: timeFmt.format(card.until),
-                        })}
-                      </>
-                    )}
+                    {card.until &&
+                      card.until.getTime() !== card.best.getTime() && (
+                        <>
+                          {" · "}
+                          {t("auroraWindow", {
+                            from: timeFmt.format(card.best),
+                            to: timeFmt.format(card.until),
+                          })}
+                        </>
+                      )}
                   </p>
                 </>
               ) : (
+                // C) Nothing expected tonight
                 <p className="mt-1 text-2xl font-semibold">{t("auroraNone")}</p>
               )}
             </div>
           </div>
 
-          {/* Clearest sky (area point) */}
+          {/* Clearest sky tonight (area point) */}
           {bestSky && (
             <div className="flex items-center gap-4 rounded-lg border bg-card p-5">
-              <WeatherIcon symbol={bestSky.symbol} className="h-10 w-10 shrink-0" />
+              <WeatherIcon
+                symbol={bestSky.symbol}
+                className="h-10 w-10 shrink-0"
+              />
               <div>
-                <p className="text-sm text-muted-foreground">{t("bestLabel")}</p>
+                <p className="text-sm text-muted-foreground">
+                  {t("bestLabel")}
+                </p>
                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                   {t("bestValue", {
                     time: timeFmt.format(bestSky.time),
@@ -207,16 +426,25 @@ export default async function TonightPage({
         </div>
       )}
 
-      {/* Best spots tonight */}
+      {/* BEST SPOTS: map + ranked list */}
       {!failed && rankedSpots.length > 0 && (
         <div className="flex flex-col gap-4">
           <div>
             <h2 className="text-xl font-semibold">{t("spotsTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("spotsSubtitle")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("spotsSubtitle")}
+            </p>
           </div>
 
-          <SpotsMap spots={mapSpots} />
+          {/* Map: glow layer + numbered spots (pulse when "Go") */}
+          <SpotsMap
+            spots={mapSpots}
+            glow={glow}
+            glowOn={glowOn}
+            glowUpdated={glowUpdated}
+          />
 
+          {/* Legend for the dot colors */}
           <div className="flex flex-wrap gap-2">
             {(["high", "possible", "low", "none"] as const).map((level) => (
               <span
@@ -228,29 +456,40 @@ export default async function TonightPage({
             ))}
           </div>
 
+          {/* Ranked list – numbers match the map dots */}
           <ol className="flex flex-col gap-2">
             {rankedSpots.map((s, i) => (
-              <li key={s.spot.slug} className="flex items-start gap-3 rounded-lg border bg-card p-4">
+              <li
+                key={s.spot.slug}
+                className="flex items-start gap-3 rounded-lg border bg-card p-4"
+              >
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold tabular-nums">
                   {i + 1}
                 </span>
                 <div className="flex min-w-0 flex-col gap-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{s.spot.name}</span>
-                    <span
-                      className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[s.tonight.level]}`}
-                    >
-                      {t(`aurora.${s.tonight.level}`)}
-                    </span>
-                    {s.tonight.nowLevel === "high" && (
-                      <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+
+                    {/* ONE badge per spot: live "Visible now" wins, otherwise tonight's level */}
+                    {isNow(s) ? (
+                      <span className={nowBadgeClass}>
                         <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                         {t("spotNow")}
                       </span>
+                    ) : (
+                      <span
+                        className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[s.tonight.level]}`}
+                      >
+                        {t(`aurora.${s.tonight.level}`)}
+                      </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground tabular-nums">{spotDetail(s)}</p>
-                  <p className="text-sm text-muted-foreground">{s.spot.note[noteLang]}</p>
+                  <p className="text-sm text-muted-foreground tabular-nums">
+                    {spotDetail(s)}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    {s.spot.note[noteLang]}
+                  </p>
                 </div>
               </li>
             ))}
@@ -258,13 +497,19 @@ export default async function TonightPage({
         </div>
       )}
 
-      {!failed && kpFailed && <p className="text-sm text-muted-foreground">{t("kpMissing")}</p>}
-
-      {!failed && rows.length === 0 && (
-        <div className="rounded-lg border bg-card p-6 text-muted-foreground">{t("noHours")}</div>
+      {/* Kp forecast failed → table still shows weather, aurora is less precise */}
+      {!failed && kpFailed && (
+        <p className="text-sm text-muted-foreground">{t("kpMissing")}</p>
       )}
 
-      {/* Hour by hour (area point) */}
+      {/* No hours left tonight (e.g. very late morning) */}
+      {!failed && rows.length === 0 && (
+        <div className="rounded-lg border bg-card p-6 text-muted-foreground">
+          {t("noHours")}
+        </div>
+      )}
+
+      {/* HOUR BY HOUR (step 1, area point). Time column is sticky on mobile scroll. */}
       {!failed && rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
@@ -305,6 +550,7 @@ export default async function TonightPage({
             <tbody>
               {rows.map(({ h, aurora }) => {
                 const sky = skyLevel(h.cloudTotal);
+                // Highlight the best hour of tonight's forecast
                 const isBest =
                   bestAurora !== null &&
                   tonightLevel !== "none" &&
@@ -314,13 +560,18 @@ export default async function TonightPage({
                     key={h.time.toISOString()}
                     className={`border-b last:border-0 ${isBest ? "bg-primary/10" : ""}`}
                   >
+                    {/* Sticky time cell (shadow trick keeps the highlight on the sticky cell) */}
                     <td
                       className={`sticky left-0 z-10 border-r bg-card px-4 py-3 font-medium tabular-nums ${
-                        isBest ? "shadow-[inset_0_0_0_100vmax] shadow-primary/10" : ""
+                        isBest
+                          ? "shadow-[inset_0_0_0_100vmax] shadow-primary/10"
+                          : ""
                       }`}
                     >
                       {timeFmt.format(h.time)}
                     </td>
+
+                    {/* Aurora level for this hour */}
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${auroraStyles[aurora.level]}`}
@@ -328,6 +579,8 @@ export default async function TonightPage({
                         {t(`aurora.${aurora.level}`)}
                       </span>
                     </td>
+
+                    {/* Activity in words + Kp number */}
                     <td className="whitespace-nowrap px-4 py-3">
                       {aurora.kp === null ? (
                         "–"
@@ -340,9 +593,14 @@ export default async function TonightPage({
                         </>
                       )}
                     </td>
+
+                    {/* Weather icon + clear/partly/cloudy */}
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2.5">
-                        <WeatherIcon symbol={h.symbol} className="h-6 w-6 shrink-0" />
+                        <WeatherIcon
+                          symbol={h.symbol}
+                          className="h-6 w-6 shrink-0"
+                        />
                         <span
                           className={`inline-block whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium ${skyStyles[sky]}`}
                         >
@@ -350,17 +608,33 @@ export default async function TonightPage({
                         </span>
                       </div>
                     </td>
+
+                    {/* Cloud % */}
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.cloudTotal === null ? "–" : `${Math.round(h.cloudTotal)}%`}
+                      {h.cloudTotal === null
+                        ? "–"
+                        : `${Math.round(h.cloudTotal)}%`}
                     </td>
+
+                    {/* Rain/snow mm */}
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.precipitation === null ? "–" : `${h.precipitation.toFixed(1)} mm`}
+                      {h.precipitation === null
+                        ? "–"
+                        : `${h.precipitation.toFixed(1)} mm`}
                     </td>
+
+                    {/* Temperature */}
                     <td className="px-4 py-3 text-right tabular-nums">
-                      {h.temperature === null ? "–" : `${Math.round(h.temperature)}°`}
+                      {h.temperature === null
+                        ? "–"
+                        : `${Math.round(h.temperature)}°`}
                     </td>
+
+                    {/* Wind + gusts */}
                     <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums">
-                      {h.windSpeed === null ? "–" : `${Math.round(h.windSpeed)} m/s`}
+                      {h.windSpeed === null
+                        ? "–"
+                        : `${Math.round(h.windSpeed)} m/s`}
                       {h.windGust !== null && (
                         <span className="ml-1 text-xs text-muted-foreground">
                           ({t("gust", { value: Math.round(h.windGust) })})
@@ -375,10 +649,14 @@ export default async function TonightPage({
         </div>
       )}
 
+      {/* What Kp means, in plain words */}
       {!failed && rows.length > 0 && (
-        <p className="max-w-prose text-sm text-muted-foreground">{t("kpExplain")}</p>
+        <p className="max-w-prose text-sm text-muted-foreground">
+          {t("kpExplain")}
+        </p>
       )}
 
+      {/* Link to the 3-night forecast */}
       <Link
         href={`/forecast/${location}`}
         className="w-fit text-sm font-medium text-primary hover:underline"
@@ -386,6 +664,7 @@ export default async function TonightPage({
         {t("nextNights")} →
       </Link>
 
+      {/* Data credits (required by MET's CC BY 4.0 licence) */}
       <p className="text-xs text-muted-foreground">
         <a
           href="https://www.met.no/en"

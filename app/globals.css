@@ -169,8 +169,9 @@
   position: absolute;
   inset: -2px;
   border-radius: 9999px;
-  border: 2px solid rgb(16 185 129 / 0.9);
-  background: rgb(16 185 129 / 0.15);
+  border: 2.5px solid rgb(255 255 255 / 1);
+  background: rgb(16 185 129 / 0.2);
+  box-shadow: 0 0 10px 2px rgb(16 185 129 / 0.8);
   animation: nk-wave 4s ease-out infinite;
   pointer-events: none;
   z-index: -1;

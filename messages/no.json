@@ -38,7 +38,8 @@
       "partly": "Delvis skyet",
       "cloudy": "Skyet"
     },
-    "auroraLabel": "Nordlys i kveld",
+    "auroraLabel": "Prognose for i kveld",
+    "happeningNow": "Skjer nå",
     "auroraBest": "Best rundt {time}",
     "auroraWindow": "Bra {from}–{to}",
     "auroraNone": "Lite sannsynlig i kveld",
@@ -70,6 +71,21 @@
     "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
     "licence": "Lisens"
   },
+  "Now": {
+    "title": "Akkurat nå",
+    "go": "Gå ut nå",
+    "maybe": "Kanskje – verdt et blikk",
+    "wait": "Ikke nå",
+    "cloudy": "Nordlys aktivt, men for skyet",
+    "daylight": "For lyst – vent til det blir mørkt",
+    "chance": "Nordlyssjanse {chance} %",
+    "cloud": "Skydekke {cloud} %",
+    "bestSpot": "Beste sted: {spot}",
+    "strengthening": "Gunstig solvind – kan bli sterkere snart",
+    "updated": "Live nordlysdata {time}",
+    "forecastOnly": "Live-data utilgjengelig – viser prognose",
+    "wind": "Solvind Bz {bz} nT, {speed} km/s"
+  },
   "Forecast": {
     "title": "De neste 3 nettene i {place}",
     "subtitle": "Nordlyssjanse og vær for de kommende nettene, kl. 18–06 norsk tid.",
@@ -95,5 +111,13 @@
   "Dashboard": {
     "title": "Dashbord",
     "placeholder": "Dine steder og varsler vises her."
+  },
+  "Map": {
+    "auroraLayer": "Nordlyslag",
+    "showRegion": "Vis region",
+    "showSpots": "Tilbake til stedene",
+    "glowLow": "Svak",
+    "glowHigh": "Sterk",
+    "glowUpdated": "Live nordlys {time}"
   }
 }

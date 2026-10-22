@@ -38,7 +38,8 @@
       "partly": "Partly cloudy",
       "cloudy": "Cloudy"
     },
-    "auroraLabel": "Aurora tonight",
+    "auroraLabel": "Tonight's forecast",
+    "happeningNow": "Happening now",
     "auroraBest": "Best around {time}",
     "auroraWindow": "Good {from}–{to}",
     "auroraNone": "Unlikely tonight",
@@ -70,6 +71,21 @@
     "credit": "Weather data from MET Norway (CC BY 4.0).",
     "licence": "Licence"
   },
+  "Now": {
+    "title": "Right now",
+    "go": "Go out now",
+    "maybe": "Maybe — worth a look",
+    "wait": "Not now",
+    "cloudy": "Aurora active, but too cloudy",
+    "daylight": "Too bright — wait for darkness",
+    "chance": "Aurora chance {chance}%",
+    "cloud": "Cloud {cloud}%",
+    "bestSpot": "Best spot: {spot}",
+    "strengthening": "Solar wind favourable — may get stronger soon",
+    "updated": "Live aurora data {time}",
+    "forecastOnly": "Live data unavailable — showing forecast",
+    "wind": "Solar wind Bz {bz} nT, {speed} km/s"
+  },
   "Forecast": {
     "title": "Next 3 nights in {place}",
     "subtitle": "Aurora chance and weather for the coming nights, 18:00–06:00 Norwegian time.",
@@ -95,5 +111,13 @@
   "Dashboard": {
     "title": "Dashboard",
     "placeholder": "Your locations and alerts will appear here."
+  },
+  "Map": {
+    "auroraLayer": "Aurora layer",
+    "showRegion": "Show region",
+    "showSpots": "Back to spots",
+    "glowLow": "Weak",
+    "glowHigh": "Strong",
+    "glowUpdated": "Live aurora {time}"
   }
 }
