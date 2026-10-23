@@ -1,21 +1,33 @@
+/**
+ * "Right now" card at the top of the Tonight page (step 2, live).
+ * Shows the status of the best spot right now:
+ *   storm (pink) · go (green) · maybe (blue) · wait · cloudy · daylight
+ * plus aurora chance, cloud, best spot, solar wind and update time.
+ * Falls back to step 1 (forecast) when live NOAA data is missing.
+ */
+
 import { useTranslations } from "next-intl";
 import type { LiveStatus } from "@/lib/aurora-live";
 import type { SolarWind } from "@/lib/sources/solar-wind";
 
+// Card border/background per status
 const STYLES: Record<LiveStatus, string> = {
+  storm: "border-fuchsia-500/60 bg-fuchsia-500/10",
   go: "border-emerald-500/60 bg-emerald-500/10",
-  maybe: "border-amber-500/60 bg-amber-500/10",
+  maybe: "border-sky-500/60 bg-sky-500/10",
   wait: "border-border bg-card",
   cloudy: "border-border bg-card",
   daylight: "border-border bg-card",
 };
 
+// Status dot color
 const DOT: Record<LiveStatus, string> = {
+  storm: "bg-fuchsia-500",
   go: "bg-emerald-500",
-  maybe: "bg-amber-500",
+  maybe: "bg-sky-500",
   wait: "bg-muted-foreground",
   cloudy: "bg-muted-foreground",
-  daylight: "bg-muted-foreground",
+  daylight: "bg-amber-400",
 };
 
 const timeFmt = new Intl.DateTimeFormat("nb-NO", {
@@ -26,7 +38,7 @@ const timeFmt = new Intl.DateTimeFormat("nb-NO", {
 
 type Props = {
   status: LiveStatus;
-  live: boolean;            // false = OVATION failed, showing step 1 forecast
+  live: boolean; // false = OVATION failed, showing step 1 forecast
   spotName?: string;
   chance?: number;
   cloud?: number | null;
@@ -40,6 +52,7 @@ export function RightNow({
 }: Props) {
   const t = useTranslations("Now");
   const night = status !== "daylight";
+  const animated = status === "go" || status === "storm";
 
   return (
     <section className={`rounded-xl border p-5 ${STYLES[status]}`}>
@@ -47,8 +60,10 @@ export function RightNow({
 
       <div className="mt-1 flex items-center gap-3">
         <span className="relative flex size-3">
-          {status === "go" && (
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500 opacity-75 motion-reduce:animate-none" />
+          {animated && (
+            <span
+              className={`absolute inline-flex size-full animate-ping rounded-full opacity-75 motion-reduce:animate-none ${DOT[status]}`}
+            />
           )}
           <span className={`relative inline-flex size-3 rounded-full ${DOT[status]}`} />
         </span>

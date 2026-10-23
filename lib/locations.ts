@@ -1,3 +1,19 @@
+/**
+ * Areas and viewing spots
+ *
+ * An AREA is a place in the menu (Bodø, Svolvær …). Its lat/lon is used for
+ * the hour-by-hour weather table and the moon.
+ * A SPOT is a concrete place to watch from. Each spot gets its own MET weather,
+ * its own live "right now" status, a numbered dot on the map and a pulse.
+ *
+ * darkness:  1 = city lights … 5 = no artificial light at all
+ * viewNorth: true if nothing (mountains, buildings) blocks the northern sky
+ * verified:  set to true once someone has checked the spot on location
+ *
+ * Later (database step) these move into the database so businesses can add
+ * their own spots from the dashboard.
+ */
+
 export type Spot = {
   slug: string;
   name: string;
@@ -60,6 +76,20 @@ export const locations = {
           no: "Mørk strand nord for Bodø med åpen utsikt mot havet.",
         },
         verified: false,
+      },
+      {
+        // Test spot: measured with "My location" on 23 Oct 2026
+        slug: "alstad",
+        name: "Alstad",
+        lat: 67.2743,
+        lon: 14.4574,
+        darkness: 2, // residential area: street lights nearby
+        viewNorth: true, // change to false if houses/hills block the north
+        note: {
+          en: "Residential area on the edge of Bodø. Handy for a quick look, but street lights hide weak aurora.",
+          no: "Boligområde i utkanten av Bodø. Fint for en rask titt, men gatelys skjuler svakt nordlys.",
+        },
+        verified: true,
       },
     ],
   },
@@ -127,7 +157,50 @@ export const locations = {
     name: "Svolvær",
     lat: 68.2342,
     lon: 14.5683,
-    spots: [],
+    spots: [
+      {
+        // Village on the north coast of Austvågøya, ~25 min drive from Svolvær
+        slug: "laukvik",
+        name: "Laukvik",
+        lat: 68.3881, // village centre (Wikipedia), verify the exact viewing place
+        lon: 14.4177,
+        darkness: 5,
+        viewNorth: true,
+        note: {
+          en: "Small village on the north coast, facing the open sea to the north. Known for aurora watching.",
+          no: "Lite fiskevær på nordsiden, med åpent hav mot nord. Kjent for nordlys.",
+        },
+        verified: false,
+      },
+      {
+        // Peninsula in Austnesfjorden with the famous little chapel, ~15 min from Svolvær
+        slug: "sildpollneset",
+        name: "Sildpollneset",
+        lat: 68.3222, // peninsula (Wikipedia), the chapel is at its tip; verify
+        lon: 14.7172,
+        darkness: 4,
+        viewNorth: true, // fjord opens to the north; mountains around, verify
+        note: {
+          en: "Small chapel on a peninsula in the fjord, a classic photo spot with mountains and water. Parking by the E10.",
+          no: "Lite kapell på et nes i fjorden, et klassisk fotomotiv med fjell og vann. Parkering ved E10.",
+        },
+        verified: false,
+      },
+      {
+        // Flat island west of Svolvær, ~35 min drive
+        slug: "gimsoya",
+        name: "Gimsøya",
+        lat: 68.2918, // island centre (Wikipedia); best views on the north coast near Hov
+        lon: 14.1865,
+        darkness: 5,
+        viewNorth: true,
+        note: {
+          en: "Flat, open island with wide skies and very little light. Head to the north coast near Hov for the best view.",
+          no: "Flat og åpen øy med vid himmel og svært lite lys. Kjør til nordkysten ved Hov for best utsikt.",
+        },
+        verified: false,
+      },
+    ],
   },
 } satisfies Record<string, Area>;
 

@@ -8,9 +8,16 @@
  *  2. Aurora glow: NOAA OVATION values painted as an image (lib/glow.ts)
  *     (color = value: faint green → green → mint → pink for storms)
  *  3. Place labels (glow is inserted under them so town names stay readable)
- *  4. Numbered spot dots (HTML markers, always on top) with pulse waves when "Go"
+ *  4. Numbered spot dots (HTML markers, always on top) with pulse waves:
+ *     maybe = 1 slow blue ring, go = 3 green waves, storm = 3 fast pink waves
+ *     (wave styles: .nk-wave in app/globals.css)
  *
- * Controls (top-left): "Aurora layer" on/off and "Show region" / "Back to spots".
+ *  5. "You are here" dot (blue, white border) after "Check my location",
+ *     pulsing at its own live level. Listens for the "nk:my-location" event
+ *     sent by components/my-location.tsx.
+ *
+ * Controls (top-left): "Aurora layer" on/off, "Show region" / "Back to spots",
+ * and "My location" (asks the MyLocation card under the map to run its check).
  * Legend (bottom-left): Weak → Strong + update time.
  *
  * Glow vs pulse:
@@ -21,10 +28,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useTheme } from "next-themes";
 import { useTranslations } from "next-intl";
-import type { ImageSource, Map as MapLibreMap } from "maplibre-gl";
+import type { ImageSource, Map as MapLibreMap, Marker } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import type { AuroraLevel } from "@/lib/aurora";
 import type { AuroraPoint } from "@/lib/sources/ovation";
+import type { PulseLevel } from "@/lib/aurora-live";
+import {
+  CHECK_LOCATION_EVENT,
+  MY_LOCATION_EVENT,
+  type MyLocationDetail,
+} from "@/components/my-location";
+import { LocateFixed } from "lucide-react";
+
+type MapLibreModule = typeof import("maplibre-gl");
 import { buildGlowImage, GLOW_COORDINATES } from "@/lib/glow";
 
 export type MapSpot = {
@@ -36,7 +52,7 @@ export type MapSpot = {
   levelLabel: string; // e.g. "High"
   detail: string; // e.g. "Best 22:00 · 5% cloud · Darkness 4/5"
   note: string;
-  pulse: boolean; // true when aurora is visible right now ("Go")
+  pulse: PulseLevel; // "maybe" | "go" | "storm" | null (no pulse)
 };
 
 type Props = {
@@ -161,6 +177,64 @@ function addGlowLayer(
 }
 
 // ======================================================================
+// "YOU ARE HERE" (after "Check my location")
+// ======================================================================
+
+/** Adds a pulse ring set (same CSS as the spots) inside a marker element */
+function addWaves(el: HTMLElement, pulse: PulseLevel) {
+  if (!pulse) return;
+  const waves = pulse === "maybe" ? [1] : [1, 2, 3];
+  for (const n of waves) {
+    const wave = document.createElement("span");
+    wave.className = `nk-wave nk-wave--${pulse} nk-wave--${n}`;
+    el.appendChild(wave);
+  }
+}
+
+/**
+ * Creates or moves the "You are here" marker.
+ * Blue like a phone's map app, so it never looks like a numbered spot.
+ */
+function placeMe(
+  lib: MapLibreModule,
+  map: MapLibreMap,
+  existing: Marker | null,
+  me: MyLocationDetail,
+  label: string,
+): Marker {
+  existing?.remove();
+
+  const el = document.createElement("div");
+  el.className = "nk-dot";
+  el.setAttribute("aria-label", label);
+  el.style.cssText =
+    "width:18px;height:18px;border-radius:9999px;background:#2563eb;border:3px solid #fff;box-shadow:0 0 0 2px rgba(37,99,235,.35),0 1px 4px rgba(0,0,0,.35);";
+  addWaves(el, me.pulse);
+
+  const popup = document.createElement("div");
+  popup.style.cssText = "color:#0f172a;font-size:13px;line-height:1.4;";
+  popup.textContent = label;
+
+  return new lib.Marker({ element: el })
+    .setLngLat([me.lon, me.lat])
+    .setPopup(new lib.Popup({ offset: 14 }).setDOMContent(popup))
+    .addTo(map);
+}
+
+/** Zoom so both the spots and "you" are visible */
+function fitSpotsAndMe(map: MapLibreMap, spots: MapSpot[], me: MyLocationDetail) {
+  const lons = [...spots.map((s) => s.lon), me.lon];
+  const lats = [...spots.map((s) => s.lat), me.lat];
+  map.fitBounds(
+    [
+      [Math.min(...lons), Math.min(...lats)],
+      [Math.max(...lons), Math.max(...lats)],
+    ],
+    { padding: 60, maxZoom: 12, duration: 800 },
+  );
+}
+
+// ======================================================================
 // COMPONENT
 // ======================================================================
 
@@ -171,6 +245,7 @@ export function SpotsMap({
   glowUpdated = null,
 }: Props) {
   const t = useTranslations("Map");
+  const tNow = useTranslations("Now");
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const currentStyleRef = useRef<string | null>(null);
@@ -188,6 +263,12 @@ export function SpotsMap({
   const glowRef = useRef(glow);
   const showGlowRef = useRef(showGlow);
 
+  // "You are here": the loaded MapLibre module, the marker, and the last position
+  const libRef = useRef<MapLibreModule | null>(null);
+  const meMarkerRef = useRef<Marker | null>(null);
+  const meRef = useRef<MyLocationDetail | null>(null);
+  const meLabel = (me: MyLocationDetail) => `${t("you")} · ${tNow(me.status)}`;
+
   // When night starts/ends (page auto-refresh), follow the new default
   useEffect(() => setShowGlow(glowOn), [glowOn]);
 
@@ -200,6 +281,7 @@ export function SpotsMap({
       // Load MapLibre only in the browser (it needs window/WebGL)
       const maplibregl = await import("maplibre-gl");
       maplibregl.setWorkerUrl("/maplibre/maplibre-gl-worker.mjs");
+      libRef.current = maplibregl;
       if (cancelled || !containerRef.current || spots.length === 0) return;
 
       // Remove any map left over from a previous run (dev reloads, StrictMode)
@@ -243,14 +325,9 @@ export function SpotsMap({
         dot.setAttribute("aria-label", `${rank}. ${s.name}`);
         dot.style.cssText = `width:28px;height:28px;border-radius:9999px;background:${LEVEL_COLORS[s.level]};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.25);cursor:pointer;color:#fff;font:600 13px/1 system-ui,sans-serif;display:flex;align-items:center;justify-content:center;`;
 
-        // Three expanding waves when aurora is visible right now (CSS in globals.css)
-        if (s.pulse) {
-          for (const n of [1, 2, 3]) {
-            const wave = document.createElement("span");
-            wave.className = `nk-wave nk-wave--${n}`;
-            dot.appendChild(wave);
-          }
-        }
+        // Pulse waves (CSS in globals.css):
+        //   maybe → 1 slow blue ring, go → 3 green waves, storm → 3 fast pink waves
+        addWaves(dot, s.pulse);
 
         // The popup (built with textContent, never innerHTML → safe from injection)
         const popup = document.createElement("div");
@@ -275,6 +352,11 @@ export function SpotsMap({
       fitSpots(map, spots, 0);
       setView("spots");
 
+      // Map was rebuilt (e.g. new spots) → put "You are here" back if we had it
+      meMarkerRef.current = meRef.current
+        ? placeMe(maplibregl, map, null, meRef.current, meLabel(meRef.current))
+        : null;
+
       mapRef.current = map;
     })();
 
@@ -286,6 +368,23 @@ export function SpotsMap({
       createdMap?.remove();
       mapRef.current = null;
     };
+  }, [spots]);
+
+  // ---------- "Check my location" result → show "You are here" ----------
+  useEffect(() => {
+    function onMyLocation(event: Event) {
+      const me = (event as CustomEvent<MyLocationDetail>).detail;
+      meRef.current = me;
+      const map = mapRef.current;
+      const lib = libRef.current;
+      if (!map || !lib) return; // map not ready yet; added when it is
+      meMarkerRef.current = placeMe(lib, map, meMarkerRef.current, me, meLabel(me));
+      fitSpotsAndMe(map, spots, me);
+      setView("spots");
+    }
+    window.addEventListener(MY_LOCATION_EVENT, onMyLocation);
+    return () => window.removeEventListener(MY_LOCATION_EVENT, onMyLocation);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spots]);
 
   // ---------- switch map style when light/dark changes ----------
@@ -363,6 +462,14 @@ export function SpotsMap({
         </button>
         <button type="button" onClick={toggleView} className={buttonClass}>
           {view === "spots" ? t("showRegion") : t("showSpots")}
+        </button>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event(CHECK_LOCATION_EVENT))}
+          className={`${buttonClass} inline-flex items-center gap-1.5`}
+        >
+          <LocateFixed className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("myLocation")}
         </button>
       </div>
 

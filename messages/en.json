@@ -69,7 +69,8 @@
     "creditNoaa": "Aurora activity from NOAA SWPC.",
     "nextNights": "Next 3 nights",
     "credit": "Weather data from MET Norway (CC BY 4.0).",
-    "licence": "Licence"
+    "licence": "Licence",
+    "spotStorm": "Storm now"
   },
   "Now": {
     "title": "Right now",
@@ -84,7 +85,8 @@
     "strengthening": "Solar wind favourable — may get stronger soon",
     "updated": "Live aurora data {time}",
     "forecastOnly": "Live data unavailable — showing forecast",
-    "wind": "Solar wind Bz {bz} nT, {speed} km/s"
+    "wind": "Solar wind Bz {bz} nT, {speed} km/s",
+    "storm": "Strong aurora — go out now!"
   },
   "Forecast": {
     "title": "Next 3 nights in {place}",
@@ -118,7 +120,12 @@
     "showSpots": "Back to spots",
     "glowLow": "Weak",
     "glowHigh": "Strong",
-    "glowUpdated": "Live aurora {time}"
+    "glowUpdated": "Live aurora {time}",
+    "pulseMaybe": "1 slow ring = maybe",
+    "pulseGo": "Green waves = go now",
+    "pulseStorm": "Pink fast waves = storm",
+    "you": "You are here",
+    "myLocation": "My location"
   },
   "Moon": {
     "title": "Moon tonight",
@@ -159,5 +166,18 @@
       "some": "Some moonlight",
       "bright": "Bright moon"
     }
+  },
+  "MyLocation": {
+    "title": "At your location",
+    "button": "Check my location",
+    "again": "Check again",
+    "locating": "Finding your location…",
+    "loading": "Checking the sky above you…",
+    "denied": "Location access is blocked. Allow location for this site in your browser settings and try again.",
+    "unavailable": "Your browser can't share its location.",
+    "outside": "Your location is outside the area we cover (Northern Norway and nearby).",
+    "error": "Couldn't check right now. Try again in a minute.",
+    "position": "Position {lat}, {lon}",
+    "assumption": "assumes some light nearby, like a village"
   }
 }

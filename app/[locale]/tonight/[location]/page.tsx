@@ -8,8 +8,11 @@
  *     - NOAA solar wind: Bz (negative = aurora can get stronger soon)
  *     - MET: cloud cover this hour at each spot
  *     - Sun position: is it dark enough?
- *     → "Go out now" / "Maybe" / "Not now" / "Too cloudy" / "Too bright"
+ *     → "Strong aurora" / "Go out now" / "Maybe" / "Not now" / "Too cloudy" / "Too bright"
  *     → drives the "Right now" card, the pulsing dots and the "now" badge
+ *     → pulse: maybe = 1 slow blue ring, go = 3 green waves, storm = 3 fast pink waves
+ *     → "Check my location" does the same calculation for the visitor's own position
+ *       (components/my-location.tsx → app/api/now/route.ts)
  *
  *  2. "TONIGHT'S FORECAST"  (step 1, plan)
  *     - NOAA Kp forecast (3-hour blocks, same for the whole planet)
@@ -23,10 +26,10 @@
  * The forecast is only used to describe LATER tonight.
  * If live NOAA data fails, we fall back to step 1 for everything.
  *
- * TESTING THE MAP GLOW (development only):
- *   add ?glowTest=quiet|normal|good|strong|storm|narrow|faint to the URL,
- *   e.g. http://localhost:3000/tonight/bodo?glowTest=storm
- *   (see lib/glow-test.ts). Ignored in production.
+ * TESTING (development only, ignored in production):
+ *   ?glowTest=quiet|normal|good|strong|storm|narrow|faint  → fake aurora glow (lib/glow-test.ts)
+ *   ?pulseTest=maybe|go|storm                               → every spot pulses at that level
+ *   e.g. http://localhost:3000/tonight/bodo?pulseTest=storm&glowTest=storm
  */
 
 import { notFound } from "next/navigation";
@@ -49,7 +52,12 @@ import {
   spotTonight,
   type AuroraLevel,
 } from "@/lib/aurora"; // step 1 scoring
-import { spotNow, type LiveStatus } from "@/lib/aurora-live"; // step 2 scoring
+import {
+  pulseFor,
+  spotNow,
+  type LiveStatus,
+  type PulseLevel,
+} from "@/lib/aurora-live"; // step 2 scoring
 import {
   getTonightHours,
   skyLevel,
@@ -68,6 +76,7 @@ import { SpotsMap, type MapSpot } from "@/components/spots-map";
 import { RightNow } from "@/components/right-now";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { MoonCard } from "@/components/moon-card";
+import { MyLocation } from "@/components/my-location";
 
 // "Right now" must be computed on every request.
 // MET and Kp fetches still use their own cache (revalidate), so MET isn't spammed.
@@ -98,6 +107,10 @@ const auroraStyles: Record<AuroraLevel, string> = {
 const nowBadgeClass =
   "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300";
 
+// "Storm now" badge (live) – same pink as the storm pulse and glow
+const stormBadgeClass =
+  "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full bg-fuchsia-500/15 px-2.5 py-0.5 text-xs font-medium text-fuchsia-700 dark:text-fuchsia-300";
+
 /**
  * Fallback: turn a step 1 level into a "right now" status.
  * Only used when OVATION (live) could not be fetched.
@@ -114,14 +127,15 @@ export default async function TonightPage({
   searchParams,
 }: {
   params: Promise<{ location: string }>;
-  searchParams: Promise<{ glowTest?: string }>;
+  searchParams: Promise<{ glowTest?: string; pulseTest?: string }>;
 }) {
   const { location } = await params;
-  const { glowTest: glowTestName } = await searchParams;
+  const { glowTest: glowTestName, pulseTest } = await searchParams;
   const place = getLocation(location);
   if (!place) notFound();
 
   const t = await getTranslations("Tonight");
+  const tMap = await getTranslations("Map");
   const locale = await getLocale();
 
   // ======================================================================
@@ -244,12 +258,22 @@ export default async function TonightPage({
     : fallbackStatus(rankedSpots[0]?.tonight.nowLevel);
 
   // True when aurora is visible somewhere right now → overrides the forecast card
-  const liveGo = nowStatus === "go";
+  const liveGo = nowStatus === "go" || nowStatus === "storm";
 
-  // Per spot: should it pulse / show "Visible now"?
+  // Per spot: how should it pulse? (maybe / go / storm / none)
   // Live data when available, otherwise step 1's current-hour level.
-  const isNow = (s: (typeof rankedSpots)[number]) =>
-    s.live ? s.live.status === "go" : s.tonight.nowLevel === "high";
+  const pulseOf = (s: (typeof rankedSpots)[number]): PulseLevel => {
+    if (s.live) return pulseFor(s.live.status);
+    if (s.tonight.nowLevel === "high") return "go";
+    if (s.tonight.nowLevel === "possible") return "maybe";
+    return null;
+  };
+
+  // "Go" or "Storm" = aurora visible now → the spot shows the "now" badge
+  const isNow = (s: (typeof rankedSpots)[number]) => {
+    const p = pulseOf(s);
+    return p === "go" || p === "storm";
+  };
 
   // ======================================================================
   // 5. TONIGHT'S FORECAST CARD (step 1)
@@ -290,26 +314,42 @@ export default async function TonightPage({
       .filter(Boolean)
       .join(" · ");
 
-  // Map dots: when a spot is "Go" right now, it's shown as High + "Visible now" and pulses.
-  // Otherwise it shows tonight's forecast level.
-  const mapSpots: MapSpot[] = rankedSpots.map((s) => ({
-    slug: s.spot.slug,
-    name: s.spot.name,
-    lat: s.spot.lat,
-    lon: s.spot.lon,
-    level: isNow(s) ? "high" : s.tonight.level,
-    levelLabel: isNow(s) ? t("spotNow") : t(`aurora.${s.tonight.level}`),
-    detail: spotDetail(s),
-    note: s.spot.note[noteLang],
-    pulse: isNow(s),
-  }));
+  // Map dots: when a spot is "Go"/"Storm" right now, it's shown as High + "Visible now".
+  // Otherwise it shows tonight's forecast level. The pulse shows the live level
+  // (a "Maybe" spot keeps its forecast color but gets one slow blue ring).
+  // DEV ONLY: ?pulseTest=maybe|go|storm makes every spot pulse at that level
+  const testPulse: PulseLevel =
+    process.env.NODE_ENV !== "production" &&
+    (pulseTest === "maybe" || pulseTest === "go" || pulseTest === "storm")
+      ? pulseTest
+      : null;
+
+  const mapSpots: MapSpot[] = rankedSpots.map((s) => {
+    const pulse = testPulse ?? pulseOf(s);
+    return {
+      slug: s.spot.slug,
+      name: s.spot.name,
+      lat: s.spot.lat,
+      lon: s.spot.lon,
+      level: isNow(s) ? "high" : s.tonight.level,
+      levelLabel:
+        pulse === "storm"
+          ? t("spotStorm")
+          : pulse === "go"
+            ? t("spotNow")
+            : t(`aurora.${s.tonight.level}`),
+      detail: spotDetail(s),
+      note: s.spot.note[noteLang],
+      pulse,
+    };
+  });
 
   // Aurora glow for the map.
   // Normal: real OVATION values (under 3 are skipped, so daytime gives few or no points).
   // Dev test: ?glowTest=storm etc. replaces them with a fake band (null in production).
   const testGlow = glowTest(glowTestName, GLOW_BOX);
-// min 1 (instead of 3) so the glow fades out softly instead of stopping at a hard edge
-const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
+  // min 1 (instead of 3) so the glow fades out softly instead of stopping at a hard edge
+  const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
 
   // Glow on by default at night (or always while testing), off in daylight
   const glowOn = testGlow !== null || nowStatus !== "daylight";
@@ -349,6 +389,10 @@ const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
         wind={wind}
         updated={ovation?.observed ?? null}
       />
+
+      {/* CHECK MY LOCATION for areas WITHOUT a map (e.g. Svolvær).
+          With a map, the card sits right under the map instead (see below). */}
+      {(failed || rankedSpots.length === 0) && <MyLocation />}
 
       {/* MET failed → no weather at all */}
       {failed && (
@@ -461,6 +505,11 @@ const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
             glowUpdated={glowUpdated}
           />
 
+          {/* CHECK MY LOCATION: right under the map, so the blue "You are here"
+              dot and the answer are seen together. The map's "My location"
+              button starts the same check. */}
+          <MyLocation />
+
           {/* Legend for the dot colors */}
           <div className="flex flex-wrap gap-2">
             {(["high", "possible", "low", "none"] as const).map((level) => (
@@ -472,6 +521,22 @@ const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
               </span>
             ))}
           </div>
+
+          {/* Legend for the pulse rings (live) */}
+          <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full border-2 border-sky-500" />
+              {tMap("pulseMaybe")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full border-2 border-emerald-500 ring-2 ring-emerald-500/40 ring-offset-1 ring-offset-background" />
+              {tMap("pulseGo")}
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span className="h-3 w-3 rounded-full border-2 border-fuchsia-500 ring-2 ring-fuchsia-500/40 ring-offset-1 ring-offset-background" />
+              {tMap("pulseStorm")}
+            </span>
+          </p>
 
           {/* Ranked list – numbers match the map dots */}
           <ol className="flex flex-col gap-2">
@@ -487,8 +552,13 @@ const glow = testGlow ?? (ovation ? ovation.points(GLOW_BOX, 1) : []);
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium">{s.spot.name}</span>
 
-                    {/* ONE badge per spot: live "Visible now" wins, otherwise tonight's level */}
-                    {isNow(s) ? (
+                    {/* ONE badge per spot: live "Storm now"/"Visible now" wins, otherwise tonight's level */}
+                    {pulseOf(s) === "storm" ? (
+                      <span className={stormBadgeClass}>
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-fuchsia-500" />
+                        {t("spotStorm")}
+                      </span>
+                    ) : isNow(s) ? (
                       <span className={nowBadgeClass}>
                         <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
                         {t("spotNow")}

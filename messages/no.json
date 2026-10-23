@@ -69,7 +69,8 @@
     "creditNoaa": "Nordlysaktivitet fra NOAA SWPC.",
     "nextNights": "De neste 3 nettene",
     "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
-    "licence": "Lisens"
+    "licence": "Lisens",
+    "spotStorm": "Storm nå"
   },
   "Now": {
     "title": "Akkurat nå",
@@ -84,7 +85,8 @@
     "strengthening": "Gunstig solvind – kan bli sterkere snart",
     "updated": "Live nordlysdata {time}",
     "forecastOnly": "Live-data utilgjengelig – viser prognose",
-    "wind": "Solvind Bz {bz} nT, {speed} km/s"
+    "wind": "Solvind Bz {bz} nT, {speed} km/s",
+    "storm": "Kraftig nordlys – gå ut nå!"
   },
   "Forecast": {
     "title": "De neste 3 nettene i {place}",
@@ -118,7 +120,12 @@
     "showSpots": "Tilbake til stedene",
     "glowLow": "Svak",
     "glowHigh": "Sterk",
-    "glowUpdated": "Live nordlys {time}"
+    "glowUpdated": "Live nordlys {time}",
+    "pulseMaybe": "1 rolig ring = kanskje",
+    "pulseGo": "Grønne bølger = gå ut nå",
+    "pulseStorm": "Rosa raske bølger = storm",
+    "you": "Du er her",
+    "myLocation": "Min posisjon"
   },
   "Moon": {
     "title": "Månen i kveld",
@@ -159,5 +166,18 @@
       "some": "Litt månelys",
       "bright": "Lys måne"
     }
+  },
+  "MyLocation": {
+    "title": "Der du er",
+    "button": "Sjekk min posisjon",
+    "again": "Sjekk igjen",
+    "locating": "Finner posisjonen din…",
+    "loading": "Sjekker himmelen over deg…",
+    "denied": "Posisjon er blokkert. Tillat posisjon for denne siden i nettleserinnstillingene og prøv igjen.",
+    "unavailable": "Nettleseren din kan ikke dele posisjon.",
+    "outside": "Posisjonen din er utenfor området vi dekker (Nord-Norge og nærområdet).",
+    "error": "Kunne ikke sjekke akkurat nå. Prøv igjen om et minutt.",
+    "position": "Posisjon {lat}, {lon}",
+    "assumption": "regner med litt lys i nærheten, som i en bygd"
   }
 }

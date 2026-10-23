@@ -164,33 +164,80 @@
   }
 }
 
-/* Three green waves spreading out from map spots with a high chance right now */
+/* ==========================================================================
+   Spot pulse waves (components/spots-map.tsx)
+
+   Three levels, each different in rings + speed + color + size:
+     maybe  → 1 ring,  slow (5 s),   blue,  grows to 2×
+     go     → 3 waves, normal (3.5 s), green, grows to 3×
+     storm  → 3 waves, fast (2 s),   pink,  grows to 4×
+   ========================================================================== */
+
 .nk-wave {
   position: absolute;
   inset: -2px;
   border-radius: 9999px;
-  border: 2.5px solid rgb(255 255 255 / 1);
-  background: rgb(16 185 129 / 0.2);
-  box-shadow: 0 0 10px 2px rgb(16 185 129 / 0.8);
-  animation: nk-wave 4s ease-out infinite;
-  pointer-events: none;
   z-index: -1;
+  pointer-events: none;
+  border: 2px solid rgb(255 255 255 / 0.9);
+  animation: nk-wave var(--nk-wave-speed) ease-out infinite;
+
+  /* defaults (= "go") */
+  --nk-wave-speed: 3.5s;
+  --nk-wave-scale: 3;
+  --nk-wave-color: 16 185 129; /* emerald */
+  background: rgb(var(--nk-wave-color) / 0.2);
+  box-shadow: 0 0 10px 2px rgb(var(--nk-wave-color) / 0.8);
 }
-.nk-wave--2 {
-  animation-delay: 1.33s;
+
+/* Spread the 3 waves evenly over one cycle */
+.nk-wave--2 { animation-delay: calc(var(--nk-wave-speed) / 3); }
+.nk-wave--3 { animation-delay: calc(var(--nk-wave-speed) * 2 / 3); }
+
+/* Level: maybe — calm, single slow blue ring */
+.nk-wave--maybe {
+  --nk-wave-speed: 5s;
+  --nk-wave-scale: 2;
+  --nk-wave-color: 14 165 233; /* sky blue */
+  border-color: rgb(255 255 255 / 0.7);
 }
-.nk-wave--3 {
-  animation-delay: 2.67s;
+
+/* Level: go — clear green waves */
+.nk-wave--go {
+  --nk-wave-speed: 3.5s;
+  --nk-wave-scale: 3;
+  --nk-wave-color: 16 185 129; /* emerald */
 }
+
+/* Level: storm — urgent, fast, bigger pink waves */
+.nk-wave--storm {
+  --nk-wave-speed: 2s;
+  --nk-wave-scale: 4;
+  --nk-wave-color: 217 70 239; /* fuchsia */
+  border-width: 2.5px;
+}
+
 @keyframes nk-wave {
   from {
     transform: scale(1);
     opacity: 0.9;
   }
   to {
-    transform: scale(3);
+    transform: scale(var(--nk-wave-scale));
     opacity: 0;
   }
+}
+
+/* People who turn off animations: one still ring, size shows the level */
+@media (prefers-reduced-motion: reduce) {
+  .nk-wave {
+    animation: none;
+    opacity: 0.7;
+    transform: scale(1.5);
+  }
+  .nk-wave--storm { transform: scale(1.8); }
+  .nk-wave--2,
+  .nk-wave--3 { display: none; }
 }
 
 /* Slowly drifting aurora colours behind a card */
@@ -234,12 +281,8 @@
 
 /* Turn animations off for people who prefer less motion */
 @media (prefers-reduced-motion: reduce) {
-  .nk-wave,
   .aurora-glow::before,
   .fade-up {
     animation: none;
-  }
-  .nk-wave {
-    display: none;
   }
 }
