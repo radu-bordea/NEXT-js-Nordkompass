@@ -127,7 +127,8 @@
     "pulseGo": "Grønne bølger = gå ut nå",
     "pulseStorm": "Rosa raske bølger = storm",
     "you": "Du er her",
-    "myLocation": "Min posisjon"
+    "myLocation": "Min posisjon",
+    "directions": "Veibeskrivelse"
   },
   "Moon": {
     "title": "Månen i kveld",

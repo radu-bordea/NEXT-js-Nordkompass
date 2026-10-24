@@ -127,7 +127,8 @@
     "pulseGo": "Green waves = go now",
     "pulseStorm": "Pink fast waves = storm",
     "you": "You are here",
-    "myLocation": "My location"
+    "myLocation": "My location",
+    "directions": "Directions"
   },
   "Moon": {
     "title": "Moon tonight",

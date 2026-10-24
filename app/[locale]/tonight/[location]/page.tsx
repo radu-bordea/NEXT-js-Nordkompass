@@ -34,7 +34,14 @@
 
 import { notFound } from "next/navigation";
 import { getLocale, getTranslations } from "next-intl/server";
-import { Cloud, Droplets, Sparkles, Thermometer, Wind } from "lucide-react";
+import {
+  Cloud,
+  Droplets,
+  Navigation,
+  Sparkles,
+  Thermometer,
+  Wind,
+} from "lucide-react";
 import { Link } from "@/i18n/navigation";
 
 // Data sources
@@ -68,6 +75,7 @@ import { locations, getLocation, type Spot } from "@/lib/locations";
 import { glowTest } from "@/lib/glow-test"; // dev-only fake aurora bands
 import { moonTonight } from "@/lib/moon"; // moon phase + when it's up
 import { GLOW_BOX } from "@/lib/glow"; // area of the map glow
+import { directionsUrl } from "@/lib/directions"; // Google Maps navigation link
 
 // UI
 import { LocationPicker } from "@/components/location-picker";
@@ -577,6 +585,17 @@ export default async function TonightPage({
                   <p className="text-sm text-muted-foreground">
                     {s.spot.note[noteLang]}
                   </p>
+
+                  {/* Opens Google Maps on the phone, ready to navigate */}
+                  <a
+                    href={directionsUrl(s.spot.lat, s.spot.lon)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                  >
+                    <Navigation className="h-3.5 w-3.5" aria-hidden="true" />
+                    {tMap("directions")}
+                  </a>
                 </div>
               </li>
             ))}

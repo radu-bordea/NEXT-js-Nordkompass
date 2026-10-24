@@ -39,6 +39,7 @@ import {
   type MyLocationDetail,
 } from "@/components/my-location";
 import { LocateFixed } from "lucide-react";
+import { directionsUrl } from "@/lib/directions";
 
 type MapLibreModule = typeof import("maplibre-gl");
 import { buildGlowImage, GLOW_COORDINATES } from "@/lib/glow";
@@ -340,7 +341,17 @@ export function SpotsMap({
         const note = document.createElement("div");
         note.style.cssText = "margin-top:4px;color:#475569;";
         note.textContent = s.note;
-        popup.append(title, level, note);
+
+        // "Directions": opens Google Maps on the phone with this spot as destination
+        const directions = document.createElement("a");
+        directions.href = directionsUrl(s.lat, s.lon);
+        directions.target = "_blank";
+        directions.rel = "noopener noreferrer";
+        directions.textContent = `🧭 ${t("directions")}`;
+        directions.style.cssText =
+          "display:inline-block;margin-top:6px;font-weight:600;color:#2563eb;text-decoration:none;";
+
+        popup.append(title, level, note, directions);
 
         new maplibregl.Marker({ element: dot })
           .setLngLat([s.lon, s.lat])
