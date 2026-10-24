@@ -15,12 +15,14 @@ import { fetchMetForecast, type MetHour } from "@/lib/sources/met";
 import { fetchKpForecast, type KpPoint } from "@/lib/sources/noaa";
 import { activityLevel, summarizeNight, type AuroraLevel } from "@/lib/aurora";
 import { groupNights, osloHour, TIME_ZONE } from "@/lib/weather";
-import { locations, getLocation } from "@/lib/locations";
+import { getArea, listAreas } from "@/lib/areas"; // areas from the database
 import { LocationPicker } from "@/components/location-picker";
 import { WeatherIcon } from "@/components/weather-icon";
 
-export function generateStaticParams() {
-  return Object.keys(locations).map((location) => ({ location }));
+// One page per area, from the database
+export async function generateStaticParams() {
+  const areas = await listAreas();
+  return areas.map((area) => ({ location: area.slug }));
 }
 
 const auroraStyles: Record<AuroraLevel, string> = {
@@ -39,7 +41,7 @@ export default async function ForecastPage({
   params: Promise<{ location: string }>;
 }) {
   const { location } = await params;
-  const place = getLocation(location);
+  const place = await getArea(location); // from the database
   if (!place) notFound();
 
   const t = await getTranslations("Forecast");

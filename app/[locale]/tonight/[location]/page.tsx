@@ -71,7 +71,8 @@ import {
   TIME_ZONE,
   type SkyLevel,
 } from "@/lib/weather";
-import { locations, getLocation, type Spot } from "@/lib/locations";
+import type { Spot } from "@/lib/locations"; // shared type only
+import { getArea, listAreas } from "@/lib/areas"; // areas + spots from the database
 import { glowTest } from "@/lib/glow-test"; // dev-only fake aurora bands
 import { moonTonight } from "@/lib/moon"; // moon phase + when it's up
 import { GLOW_BOX } from "@/lib/glow"; // area of the map glow
@@ -90,9 +91,10 @@ import { MyLocation } from "@/components/my-location";
 // MET and Kp fetches still use their own cache (revalidate), so MET isn't spammed.
 export const dynamic = "force-dynamic";
 
-// One page per area (bodo, kjerringoy, saltstraumen, ...)
-export function generateStaticParams() {
-  return Object.keys(locations).map((location) => ({ location }));
+// One page per area (bodo, kjerringoy, saltstraumen, ...), from the database
+export async function generateStaticParams() {
+  const areas = await listAreas();
+  return areas.map((area) => ({ location: area.slug }));
 }
 
 // Badge colors for the sky column
@@ -139,7 +141,7 @@ export default async function TonightPage({
 }) {
   const { location } = await params;
   const { glowTest: glowTestName, pulseTest } = await searchParams;
-  const place = getLocation(location);
+  const place = await getArea(location); // from the database
   if (!place) notFound();
 
   const t = await getTranslations("Tonight");
