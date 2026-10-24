@@ -19,5 +19,13 @@
 - npm install @prisma/client @prisma/adapter-pg dotenv
 - npx prisma init --output ../generated/prisma
 
+
+- npm install prisma@7 tsx dotenv --save-dev
+- npm install @prisma/client@7 @prisma/adapter-pg
+
+- npm run db:migrate -- --name init
+- npm run db:generate
+- npm run db:seed
+
 ### shadcn
 - npx shadcn@latest add button card badge

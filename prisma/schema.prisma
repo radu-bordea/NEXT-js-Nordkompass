@@ -1,0 +1,100 @@
+// Nordkompass database schema
+//
+//   Organization  a business account (hotel, tour operator) – and your own
+//                 test organization. Plan + pilot decide what they can use.
+//   Area          a place in the menu (Bodø, Svolvær …) with a weather point
+//   Spot          a viewing place inside an area.
+//                 organizationId = null  → public spot (everyone sees it)
+//                 organizationId = set   → a business's own (private) spot
+//
+// After changing this file:
+//   npm run db:migrate -- --name what_changed   (applies to the dev branch)
+//   npm run db:generate                         (updates the TypeScript client)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Business plans. FREE = public pages only.
+enum Plan {
+  FREE
+  HOTEL
+  OPERATOR
+  BUSINESS
+}
+
+model Organization {
+  id   String @id @default(cuid())
+  name String
+  slug String @unique // used in links later, e.g. /g/hotel-xyz
+
+  /// Linked when Clerk Organizations are added (step 2)
+  clerkOrgId String? @unique
+
+  plan Plan @default(FREE)
+
+  /// Pilot: full access for free until this date (then the plan decides)
+  pilotUntil DateTime?
+
+  spots Spot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Area {
+  id   String @id @default(cuid())
+  slug String @unique // "bodo", "svolvaer" … (used in the URL)
+  name String
+
+  /// Weather point for the hour-by-hour table and the moon
+  lat Float
+  lon Float
+
+  /// Order in the area menu
+  sortOrder Int @default(0)
+
+  spots Spot[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Spot {
+  id   String @id @default(cuid())
+  slug String
+  name String
+  lat  Float
+  lon  Float
+
+  /// 1 = city lights … 5 = no artificial light at all
+  darkness  Int
+  /// true if nothing blocks the northern sky
+  viewNorth Boolean @default(true)
+
+  noteEn String @default("")
+  noteNo String @default("")
+
+  /// true once someone has checked the spot on location
+  verified Boolean @default(false)
+
+  sortOrder Int @default(0)
+
+  areaId String
+  area   Area   @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  /// null = public spot. Set = this organization's own spot (private).
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([areaId, slug])
+  @@index([organizationId])
+}

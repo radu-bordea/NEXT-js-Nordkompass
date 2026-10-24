@@ -4,10 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma migrate deploy && next build",
+    "postinstall": "prisma generate && node scripts/copy-maplibre-worker.mjs",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "node scripts/copy-maplibre-worker.mjs"
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -16,7 +20,6 @@
     "@prisma/client": "^7.10.1",
     "class-variance-authority": "^0.7.1",
     "cn": "^0.5.0",
-    "dotenv": "^18.0.8",
     "lucide-react": "^1.60.0",
     "maplibre-gl": "^6.15.0",
     "next": "16.4.2",
@@ -35,9 +38,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/suncalc": "^1.9.2",
+    "dotenv": "^18.0.9",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
-    "prisma": "^8.0.0-rc.23",
+    "prisma": "^7.10.1",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"
