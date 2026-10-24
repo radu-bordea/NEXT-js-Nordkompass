@@ -70,7 +70,9 @@
     "nextNights": "De neste 3 nettene",
     "credit": "Værdata fra Meteorologisk institutt (CC BY 4.0).",
     "licence": "Lisens",
-    "spotStorm": "Storm nå"
+    "spotStorm": "Storm nå",
+    "tableTitle": "Været i {place} sentrum",
+    "tableNote": "Time for time for {place}-området. Hvert sted i kartet har sitt eget vær og sin egen «akkurat nå»."
   },
   "Now": {
     "title": "Akkurat nå",

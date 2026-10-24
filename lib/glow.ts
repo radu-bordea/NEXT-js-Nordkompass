@@ -8,8 +8,13 @@
  *   value  0–2   → transparent (nothing)
  *   value  3–20  → faint → soft green      (weak / normal night)
  *   value 20–45  → green → bright green    (good night)
- *   value 45–75  → bright mint             (strong)
- *   value 80+    → pink                    (storm)
+ *   value 45–50  → bright mint             (strong)
+ *   value 50–62  → mint blends into pink
+ *   value 62+    → pink                    (storm)
+ *
+ * Pink starts at 50 on purpose: that's the same OVATION value where a spot's
+ * pulse turns into "storm" (STORM_CHANCE in lib/aurora-live.ts), so pink
+ * always means the same thing on the whole map.
  *
  * The image is then placed on the map between the corners of GLOW_BOX.
  *
@@ -47,10 +52,10 @@ const DARK_STOPS: Stop[] = [
   [10, 16, 185, 129, 0.13],
   [25, 16, 185, 129, 0.2], // normal night
   [45, 52, 211, 153, 0.27], // good night
-  [70, 110, 231, 183, 0.32], // strong
-  [80, 170, 140, 220, 0.34], // blending towards pink
-  [92, 217, 70, 239, 0.38], // storm (pink)
-  [100, 217, 70, 239, 0.42],
+  [50, 110, 231, 183, 0.3], // strong (storm threshold)
+  [55, 170, 140, 220, 0.33], // blending towards pink
+  [62, 217, 70, 239, 0.37], // storm (pink)
+  [100, 217, 70, 239, 0.42], // big storm: a bit stronger
 ];
 
 // Light map: deeper green so it shows on light grey
@@ -60,9 +65,9 @@ const LIGHT_STOPS: Stop[] = [
   [10, 5, 150, 105, 0.15],
   [25, 5, 150, 105, 0.23],
   [45, 16, 185, 129, 0.3],
-  [70, 5, 150, 105, 0.35],
-  [80, 120, 90, 180, 0.36],
-  [92, 192, 38, 211, 0.38],
+  [50, 5, 150, 105, 0.33], // strong (storm threshold)
+  [55, 120, 90, 180, 0.35], // blending towards pink
+  [62, 192, 38, 211, 0.38], // storm (pink)
   [100, 192, 38, 211, 0.42],
 ];
 

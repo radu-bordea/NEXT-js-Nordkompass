@@ -598,6 +598,18 @@ export default async function TonightPage({
 
       {/* HOUR BY HOUR (step 1, area point). Time column is sticky on mobile scroll. */}
       {!failed && rows.length > 0 && (
+        <div className="flex flex-col gap-1">
+          {/* Which place the table is for: the AREA point (e.g. Bodø centre),
+              not the spots. Each spot on the map has its own weather. */}
+          <h2 className="text-xl font-semibold">
+            {t("tableTitle", { place: place.name })}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {t("tableNote", { place: place.name })}
+          </p>
+        </div>
+      )}
+      {!failed && rows.length > 0 && (
         <div className="overflow-x-auto rounded-lg border bg-card">
           <table className="w-full text-sm">
             <thead>

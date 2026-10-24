@@ -70,7 +70,9 @@
     "nextNights": "Next 3 nights",
     "credit": "Weather data from MET Norway (CC BY 4.0).",
     "licence": "Licence",
-    "spotStorm": "Storm now"
+    "spotStorm": "Storm now",
+    "tableTitle": "Weather for {place} centre",
+    "tableNote": "Hour by hour for the {place} area. Each spot on the map has its own weather and its own “right now”."
   },
   "Now": {
     "title": "Right now",

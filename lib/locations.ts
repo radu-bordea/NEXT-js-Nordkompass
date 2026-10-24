@@ -67,15 +67,15 @@ export const locations = {
       {
         slug: "mjelle",
         name: "Mjelle",
-        lat: 67.388, // approximate, verify
-        lon: 14.744,
+        lat: 67.4214, // the beach itself (Visit Bodø)
+        lon: 14.6325,
         darkness: 4,
         viewNorth: true,
         note: {
-          en: "Dark beach north of Bodø with an open view towards the sea.",
-          no: "Mørk strand nord for Bodø med åpen utsikt mot havet.",
+          en: "Dark red-sand beach north of Bodø with an open view to the sea. Park at the end of the Mjelle/Mulstrand road, then about 1 km on an easy trail.",
+          no: "Mørk strand med rød sand nord for Bodø og åpen utsikt mot havet. Parker ved enden av Mjelle/Mulstrand-veien, deretter ca. 1 km på enkel sti.",
         },
-        verified: false,
+        verified: true,
       },
       {
         // Test spot: measured with "My location" on 23 Oct 2026
