@@ -252,8 +252,9 @@ export function SpotsMap({
   const currentStyleRef = useRef<string | null>(null);
 
   const { resolvedTheme } = useTheme();
+  // Latest theme for the map's "style.load" handler (updated in an effect
+  // below, because React doesn't allow changing refs while rendering)
   const themeRef = useRef(resolvedTheme);
-  themeRef.current = resolvedTheme;
 
   // UI state: glow visible? zoomed to spots or region?
   const [showGlow, setShowGlow] = useState(glowOn);
@@ -268,10 +269,26 @@ export function SpotsMap({
   const libRef = useRef<MapLibreModule | null>(null);
   const meMarkerRef = useRef<Marker | null>(null);
   const meRef = useRef<MyLocationDetail | null>(null);
+  // Label for the "You are here" popup, kept in a ref so the map's event
+  // listeners always use the current language without re-subscribing
   const meLabel = (me: MyLocationDetail) => `${t("you")} · ${tNow(me.status)}`;
+  const meLabelRef = useRef(meLabel);
+  useEffect(() => {
+    meLabelRef.current = meLabel;
+  });
 
-  // When night starts/ends (page auto-refresh), follow the new default
-  useEffect(() => setShowGlow(glowOn), [glowOn]);
+  // When night starts/ends (page auto-refresh), follow the new default.
+  // React's recommended way to "reset state when a prop changes": compare
+  // with the previous value during render instead of using an effect.
+  const [prevGlowOn, setPrevGlowOn] = useState(glowOn);
+  if (glowOn !== prevGlowOn) {
+    setPrevGlowOn(glowOn);
+    setShowGlow(glowOn);
+  }
+
+  // Text for the popups' directions link (a plain string, so the effect below
+  // can list it as a dependency; it only changes when the language changes)
+  const directionsLabel = t("directions");
 
   // ---------- create the map once (recreated only when spots change) ----------
   useEffect(() => {
@@ -347,7 +364,7 @@ export function SpotsMap({
         directions.href = directionsUrl(s.lat, s.lon);
         directions.target = "_blank";
         directions.rel = "noopener noreferrer";
-        directions.textContent = `🧭 ${t("directions")}`;
+        directions.textContent = `🧭 ${directionsLabel}`;
         directions.style.cssText =
           "display:inline-block;margin-top:6px;font-weight:600;color:#2563eb;text-decoration:none;";
 
@@ -365,7 +382,7 @@ export function SpotsMap({
 
       // Map was rebuilt (e.g. new spots) → put "You are here" back if we had it
       meMarkerRef.current = meRef.current
-        ? placeMe(maplibregl, map, null, meRef.current, meLabel(meRef.current))
+        ? placeMe(maplibregl, map, null, meRef.current, meLabelRef.current(meRef.current))
         : null;
 
       mapRef.current = map;
@@ -379,7 +396,7 @@ export function SpotsMap({
       createdMap?.remove();
       mapRef.current = null;
     };
-  }, [spots]);
+  }, [spots, directionsLabel]);
 
   // ---------- "Check my location" result → show "You are here" ----------
   useEffect(() => {
@@ -389,17 +406,17 @@ export function SpotsMap({
       const map = mapRef.current;
       const lib = libRef.current;
       if (!map || !lib) return; // map not ready yet; added when it is
-      meMarkerRef.current = placeMe(lib, map, meMarkerRef.current, me, meLabel(me));
+      meMarkerRef.current = placeMe(lib, map, meMarkerRef.current, me, meLabelRef.current(me));
       fitSpotsAndMe(map, spots, me);
       setView("spots");
     }
     window.addEventListener(MY_LOCATION_EVENT, onMyLocation);
     return () => window.removeEventListener(MY_LOCATION_EVENT, onMyLocation);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spots]);
 
   // ---------- switch map style when light/dark changes ----------
   useEffect(() => {
+    themeRef.current = resolvedTheme; // keep the ref in sync first
     const map = mapRef.current;
     const style = styleFor(resolvedTheme);
     if (!map || style === currentStyleRef.current) return;

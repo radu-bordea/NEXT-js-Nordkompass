@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated or copied files – not our code, don't lint them:
+    "app/generated/**", // Prisma client (npm run db:generate)
+    "public/maplibre/**", // MapLibre worker (copied by postinstall)
   ]),
 ]);
 

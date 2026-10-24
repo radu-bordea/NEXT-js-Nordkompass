@@ -122,10 +122,13 @@ export function MyLocation() {
 
   const busy = state.kind === "locating" || state.kind === "loading";
 
-  // The map's "My location" button → run the same check here
-  // (ref so the listener always calls the latest check function)
+  // The map's "My location" button → run the same check here.
+  // The ref always holds the latest check function; it's updated in an
+  // effect (React doesn't allow changing refs while rendering).
   const checkRef = useRef(check);
-  checkRef.current = check;
+  useEffect(() => {
+    checkRef.current = check;
+  });
   useEffect(() => {
     const onCheck = () => checkRef.current();
     window.addEventListener(CHECK_LOCATION_EVENT, onCheck);

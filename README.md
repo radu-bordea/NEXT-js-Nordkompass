@@ -27,5 +27,8 @@
 - npm run db:generate
 - npm run db:seed
 
+### deployments
+- $env:DATABASE_URL="...main pooled..."; $env:DIRECT_URL="...main direct..."; npm run db:seed
+
 ### shadcn
 - npx shadcn@latest add button card badge
